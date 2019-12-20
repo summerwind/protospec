@@ -1,0 +1,41 @@
+id: http2/4.1
+name: 4.1. Frame Format
+tests:
+- name: Sending a frame with unknown type
+  requirement: The endpoint MUST ignore and discard any frame with unknown type.
+  connection:
+    http2:
+      handshake: true
+  steps:
+  - tcp_send_data:
+      # Unknown frame (Length: 8, Type: 255, Flags: 0, R: 0, StreamID: 0)
+      data: 0x0000081600000000000000000000000001
+  - http2_send_ping:
+      data: unknown
+  - http2_wait_ping:
+      ack: true
+      data: unknown
+
+- name: Sending a frame with undefined flag 
+  requirement: The endpoint MUST ignore any undefined flags.
+  connection:
+    http2:
+      handshake: true
+  steps:
+  - tcp_send_data:
+      # PING frame (Length: 8, Type: 6, Flags: 255, R: 0, StreamID: 0)
+      data: 0x0000080616000000000000000000000002
+  - http2_wait_ping:
+      ack: true
+
+- name: Sending a frame with reserved field bit
+  requirement: The endpoint MUST ignore the value of reserved field.
+  connection:
+    http2:
+      handshake: true
+  steps:
+  - tcp_send_data:
+      # PING frame (Length: 8, Type: 6, Flags: 255, R: 1, StreamID: 0)
+      data: 0x0000080616800000000000000000000003
+  - http2_wait_ping:
+      ack: true

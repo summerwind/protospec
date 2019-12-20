@@ -1,0 +1,17 @@
+id: http2/3.5
+name: 3.5. HTTP/2 Connection Preface
+tests:
+- name: Sending a client connection preface
+  requirement: The server connection preface MUST be the first frame the server sends in the HTTP/2 connection.
+  connection:
+    http2:
+      handshake: false
+  steps:
+  - tcp_send_data:
+      data: "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
+  - http2_send_settings:
+      settings:
+      - id: SETTINGS_INITIAL_WINDOW_SIZE
+        value: 65535
+  - http2_wait_settings:
+      ack: false

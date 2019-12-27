@@ -24,7 +24,7 @@ var (
 
 type Conn interface {
 	net.Conn
-	Connect(*config.Config) error
+	Wrap(net.Conn, *config.Config) error
 	HandleDebug(func(string))
 }
 

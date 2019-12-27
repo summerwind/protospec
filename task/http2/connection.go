@@ -64,7 +64,7 @@ func getConnection(ctx context.Context) (*Conn, error) {
 	return conn, nil
 }
 
-func (conn *Conn) Connect(c *config.Config) error {
+func (conn *Conn) Wrap(baseConn net.Conn, c *config.Config) error {
 	var (
 		err        error
 		writer     io.Writer
@@ -73,9 +73,6 @@ func (conn *Conn) Connect(c *config.Config) error {
 	)
 
 	if c.TLS {
-		dialer := &net.Dialer{}
-		dialer.Timeout = c.Timeout
-
 		tlsConfig, err := c.TLSConfig()
 		if err != nil {
 			return err
@@ -85,10 +82,7 @@ func (conn *Conn) Connect(c *config.Config) error {
 			tlsConfig.NextProtos = append(tlsConfig.NextProtos, http2.NextProtoTLS)
 		}
 
-		tlsConn, err := tls.DialWithDialer(dialer, "tcp", c.Addr, tlsConfig)
-		if err != nil {
-			return err
-		}
+		tlsConn := tls.Client(baseConn, tlsConfig)
 
 		cs := tlsConn.ConnectionState()
 		if !cs.NegotiatedProtocolIsMutual {
@@ -97,10 +91,7 @@ func (conn *Conn) Connect(c *config.Config) error {
 
 		conn.Conn = tlsConn
 	} else {
-		conn.Conn, err = net.DialTimeout("tcp", c.Addr, c.Timeout)
-		if err != nil {
-			return err
-		}
+		conn.Conn = baseConn
 	}
 
 	writer = conn.Conn

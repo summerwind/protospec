@@ -76,7 +76,7 @@ func run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	r := spec.NewRunner(&c)
+	r := spec.NewCLIRunner(&c)
 	err = r.Run()
 	if err != nil {
 		return err

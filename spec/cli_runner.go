@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"strings"
 	"time"
 
@@ -41,7 +42,7 @@ func (r *CLIRunner) Run() error {
 			id := fmt.Sprintf("%s/%d", spec.ID, i+1)
 			printRunning(id, test.Name)
 
-			err := runTest(test, r.c)
+			err := r.runTest(test)
 			if err != nil {
 				var (
 					f *task.Failed
@@ -74,11 +75,17 @@ func (r *CLIRunner) Run() error {
 	return nil
 }
 
-func runTest(t Test, c *config.Config) error {
+func (r *CLIRunner) runTest(t Test) error {
 	var (
 		conn task.Conn
 		err  error
 	)
+
+	// TODO: UDP support?
+	baseConn, err := net.DialTimeout("tcp", r.c.Addr, r.c.Timeout)
+	if err != nil {
+		return err
+	}
 
 	for name, opts := range t.Connection {
 		conn, err = task.NewConnection(name, []byte(opts))
@@ -92,13 +99,13 @@ func runTest(t Test, c *config.Config) error {
 		return errors.New("no connection specified")
 	}
 
-	if c.Verbose {
+	if r.c.Verbose {
 		conn.HandleDebug(func(str string) {
 			printDebug(str)
 		})
 	}
 
-	err = conn.Connect(c)
+	err = conn.Wrap(baseConn, r.c)
 	if err != nil {
 		return err
 	}
@@ -108,7 +115,7 @@ func runTest(t Test, c *config.Config) error {
 
 	for _, step := range t.Steps {
 		for name, opts := range step {
-			task, err := task.NewTask(name, c, []byte(opts))
+			task, err := task.NewTask(name, r.c, []byte(opts))
 			if err != nil {
 				return err
 			}

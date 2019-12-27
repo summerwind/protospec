@@ -13,15 +13,15 @@ import (
 	"github.com/summerwind/protospec/task"
 )
 
-type Runner struct {
+type CLIRunner struct {
 	c *config.Config
 }
 
-func NewRunner(c *config.Config) *Runner {
-	return &Runner{c: c}
+func NewCLIRunner(c *config.Config) *CLIRunner {
+	return &CLIRunner{c: c}
 }
 
-func (r *Runner) Run() error {
+func (r *CLIRunner) Run() error {
 	var (
 		passed  int
 		skipped int

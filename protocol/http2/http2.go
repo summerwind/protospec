@@ -99,7 +99,7 @@ type SendDataParam struct {
 }
 
 func (p *SendDataParam) Validate() error {
-	if len(p.Data) == 0 {
+	if len(strings.Join(p.Data, "")) == 0 {
 		return errors.New("'data' must be specified")
 	}
 

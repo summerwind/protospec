@@ -1,0 +1,63 @@
+id: "4.1"
+name: Frame Format
+ref: "https://tools.ietf.org/html/rfc7540#section-4.1"
+tests:
+- name: Sends a frame with unknown type
+  desc: The endpoint MUST ignore and discard any frame that has a type that is unknown.
+  transport: tcp
+  protocol:
+    type: http2
+    params:
+      handshake: true
+      settings:
+        SETTINGS_INITIAL_WINDOW_SIZE: 65535
+  steps:
+  - action: http2.send_data
+    params:
+      # Unknown frame - Length: 8, Type: 255, Flags: 0, R: 0, StreamID: 0
+      data: ["0x000008160000000000", "0x0000000000000000"]
+  - action: http2.send_ping_frame
+    params:
+      ack: false
+      data: "4.1-1"
+  - action: http2.wait_ping_frame
+    params:
+      ack: true
+      data: "4.1-1"
+
+- name: Sends a frame with undefined flag
+  desc: The endpoint MUST ignore any flags that is undefined.
+  transport: tcp
+  protocol:
+    type: http2
+    params:
+      handshake: true
+      settings:
+        SETTINGS_INITIAL_WINDOW_SIZE: 65535
+  steps:
+  - action: http2.send_data
+    params:
+      # PING Frame - Length: 8, Type: 6, Flags: 255, R: 0, StreamID: 0
+      data: ["0x000008061600000000", "0x0000000000000000"]
+  - action: http2.wait_ping_frame
+    params:
+      ack: true
+
+- name: Sends a frame with reserved field bit
+  desc: The endpoint MUST ignore the value of reserved field.
+  transport: tcp
+  protocol:
+    type: http2
+    params:
+      handshake: true
+      settings:
+        SETTINGS_INITIAL_WINDOW_SIZE: 65535
+  steps:
+  - action: http2.send_data
+    params:
+      # PING Frame - Length: 8, Type: 6, Flags: 0, R: 1, StreamID: 0
+      data: ["0x000008060080000000", "0x0000000000000000"]
+  - action: http2.wait_ping_frame
+    params:
+      ack: true
+

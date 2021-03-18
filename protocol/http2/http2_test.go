@@ -947,6 +947,99 @@ func TestRunSendHeadersFrame(t *testing.T) {
 	})
 }
 
+func TestRunSendPriorityFrame(t *testing.T) {
+	param := SendPriorityFrameParam{
+		StreamID: 1,
+		Priority: Priority{
+			StreamDependency: 0,
+			Exclusive:        true,
+			Weight:           255,
+		},
+	}
+
+	conn, server := newTestConn(t)
+	ch := make(chan error, 1)
+
+	go func() {
+		framer := http2.NewFramer(server, server)
+		framer.AllowIllegalWrites = true
+		framer.AllowIllegalReads = true
+
+		f, err := framer.ReadFrame()
+		if err != nil {
+			ch <- err
+			return
+		}
+
+		pf, ok := f.(*http2.PriorityFrame)
+		if !ok {
+			ch <- fmt.Errorf("unexpected frame: %s", f)
+			return
+		}
+
+		if pf.StreamID != param.StreamID {
+			ch <- fmt.Errorf("unexpected stream ID: %v", pf.StreamID)
+			return
+		}
+
+		if pf.StreamDep != param.StreamDependency {
+			ch <- fmt.Errorf("unexpected stream dependency: %v", pf.StreamDep)
+			return
+		}
+
+		if pf.Exclusive != param.Exclusive {
+			ch <- fmt.Errorf("unexpected exclusive: %v", pf.Exclusive)
+			return
+		}
+
+		if pf.Weight != param.Weight {
+			ch <- fmt.Errorf("unexpected weight: %v", pf.Weight)
+			return
+		}
+
+		close(ch)
+	}()
+
+	buf, err := json.Marshal(param)
+	if err != nil {
+		t.Errorf("marshal error: %v", err)
+	}
+
+	res, err := conn.Run(ActionSendPriorityFrame, buf)
+	if err != nil {
+		t.Errorf("run error: %v", err)
+	}
+	if res != nil {
+		t.Errorf("unexpected result: %v", res)
+	}
+
+	if err := conn.Close(); err != nil {
+		t.Errorf("close error: %v", err)
+	}
+
+	if err = <-ch; err != nil {
+		t.Errorf("server error: %v", err)
+	}
+
+	t.Run("invalid param", func(t *testing.T) {
+		param := "invalid"
+		conn, _ := newTestConn(t)
+
+		buf, err := json.Marshal(param)
+		if err != nil {
+			t.Errorf("marshal error: %v", err)
+		}
+
+		res, err := conn.Run(ActionSendPriorityFrame, buf)
+		if err == nil {
+			t.Error("unexpected nil error")
+		}
+		if res != nil {
+			t.Errorf("unexpected result: %v", res)
+		}
+	})
+}
+
 func TestRunSendSettingsFrame(t *testing.T) {
 	tests := []SendSettingsFrameParam{
 		{

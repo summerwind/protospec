@@ -31,6 +31,7 @@ const (
 	ActionSendRSTStreamFrame    = "http2.send_rst_stream_frame"
 	ActionSendSettingsFrame     = "http2.send_settings_frame"
 	ActionSendPingFrame         = "http2.send_ping_frame"
+	ActionSendWindowUpdateFrame = "http2.send_window_update_frame"
 	ActionSendContinuationFrame = "http2.send_continuation_frame"
 	ActionWaitHeadersFrame      = "http2.wait_headers_frame"
 	ActionWaitSettingsFrame     = "http2.wait_settings_frame"
@@ -188,6 +189,15 @@ type SendPingFrameParam struct {
 }
 
 func (p *SendPingFrameParam) Validate() error {
+	return nil
+}
+
+type SendWindowUpdateFrameParam struct {
+	StreamID            uint32 `json:"stream_id"`
+	WindowSizeIncrement uint32 `json:"window_size_increment"`
+}
+
+func (p *SendWindowUpdateFrameParam) Validate() error {
 	return nil
 }
 
@@ -360,6 +370,8 @@ func (conn *Conn) Run(action string, param []byte) (interface{}, error) {
 		return conn.sendSettingsFrame(param)
 	case ActionSendPingFrame:
 		return conn.sendPingFrame(param)
+	case ActionSendWindowUpdateFrame:
+		return conn.sendWindowUpdateFrame(param)
 	case ActionSendContinuationFrame:
 		return conn.sendContinuationFrame(param)
 	case ActionWaitHeadersFrame:
@@ -669,6 +681,21 @@ func (conn *Conn) sendPingFrame(param []byte) (interface{}, error) {
 
 	defer conn.logWriteFrame()
 	return nil, conn.framer.WritePing(p.Ack, data)
+}
+
+func (conn *Conn) sendWindowUpdateFrame(param []byte) (interface{}, error) {
+	var p SendWindowUpdateFrameParam
+
+	if err := json.Unmarshal(param, &p); err != nil {
+		return nil, err
+	}
+
+	if err := p.Validate(); err != nil {
+		return nil, err
+	}
+
+	defer conn.logWriteFrame()
+	return nil, conn.framer.WriteWindowUpdate(p.StreamID, p.WindowSizeIncrement)
 }
 
 func (conn *Conn) sendContinuationFrame(param []byte) (interface{}, error) {

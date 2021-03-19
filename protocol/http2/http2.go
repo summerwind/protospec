@@ -28,6 +28,7 @@ const (
 	ActionSendDataFrame         = "http2.send_data_frame"
 	ActionSendHeadersFrame      = "http2.send_headers_frame"
 	ActionSendPriorityFrame     = "http2.send_priority_frame"
+	ActionSendRSTStreamFrame    = "http2.send_rst_stream_frame"
 	ActionSendSettingsFrame     = "http2.send_settings_frame"
 	ActionSendPingFrame         = "http2.send_ping_frame"
 	ActionSendContinuationFrame = "http2.send_continuation_frame"
@@ -148,6 +149,20 @@ type SendPriorityFrameParam struct {
 }
 
 func (p *SendPriorityFrameParam) Validate() error {
+	return nil
+}
+
+type SendRSTStreamFrameParam struct {
+	StreamID  uint32 `json:"stream_id"`
+	ErrorCode string `json:"error_code"`
+}
+
+func (p *SendRSTStreamFrameParam) Validate() error {
+	_, ok := errorCode[p.ErrorCode]
+	if !ok {
+		return fmt.Errorf("invalid error code: %s", p.ErrorCode)
+	}
+
 	return nil
 }
 
@@ -339,6 +354,8 @@ func (conn *Conn) Run(action string, param []byte) (interface{}, error) {
 		return conn.sendHeadersFrame(param)
 	case ActionSendPriorityFrame:
 		return conn.sendPriorityFrame(param)
+	case ActionSendRSTStreamFrame:
+		return conn.sendRSTStreamFrame(param)
 	case ActionSendSettingsFrame:
 		return conn.sendSettingsFrame(param)
 	case ActionSendPingFrame:
@@ -586,6 +603,21 @@ func (conn *Conn) sendPriorityFrame(param []byte) (interface{}, error) {
 
 	defer conn.logWriteFrame()
 	return nil, conn.framer.WritePriority(p.StreamID, pp)
+}
+
+func (conn *Conn) sendRSTStreamFrame(param []byte) (interface{}, error) {
+	var p SendRSTStreamFrameParam
+
+	if err := json.Unmarshal(param, &p); err != nil {
+		return nil, err
+	}
+
+	if err := p.Validate(); err != nil {
+		return nil, err
+	}
+
+	defer conn.logWriteFrame()
+	return nil, conn.framer.WriteRSTStream(p.StreamID, errorCode[p.ErrorCode])
 }
 
 func (conn *Conn) sendSettingsFrame(param []byte) (interface{}, error) {

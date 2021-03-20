@@ -892,11 +892,18 @@ func (conn *Conn) waitConnectionError(param []byte) (interface{}, error) {
 			continue
 		}
 
+		matched := false
 		for _, code := range codes {
 			if gaf.ErrCode == code {
-				return nil, nil
+				matched = true
 			}
 		}
+
+		if !matched {
+			return nil, protocol.NewFailed(fmt.Sprintf("unexpected error code: %s", gaf.ErrCode))
+		}
+
+		return nil, nil
 	}
 }
 
@@ -952,11 +959,18 @@ func (conn *Conn) waitStreamError(param []byte) (interface{}, error) {
 			continue
 		}
 
+		matched := false
 		for _, code := range codes {
 			if errCode == code {
-				return nil, nil
+				matched = true
 			}
 		}
+
+		if !matched {
+			return nil, protocol.NewFailed(fmt.Sprintf("unexpected error code: %s", errCode))
+		}
+
+		return nil, nil
 	}
 }
 

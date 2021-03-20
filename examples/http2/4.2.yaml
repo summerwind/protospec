@@ -7,11 +7,11 @@ tests:
   transport: tcp
   protocol:
     type: http2
-    params:
+    param:
       handshake: true
   steps:
   - action: http2.send_headers_frame
-    params:
+    param:
       stream_id: 1
       end_stream: false
       end_headers: true
@@ -19,12 +19,12 @@ tests:
         - name: :method
           value: POST
   - action: http2.send_data_frame
-    params:
+    param:
       stream_id: 1
       end_stream: true
       data_length: 16384
   - action: http2.wait_headers_frame
-    params:
+    param:
       stream_id: 1
 
 - name: Sends a large size DATA frame that exceeds the SETTINGS_MAX_FRAME_SIZE
@@ -32,11 +32,11 @@ tests:
   transport: tcp
   protocol:
     type: http2
-    params:
+    param:
       handshake: true
   steps:
   - action: http2.send_headers_frame
-    params:
+    param:
       stream_id: 1
       end_stream: false
       end_headers: true
@@ -44,13 +44,13 @@ tests:
         - name: :method
           value: POST
   - action: http2.send_data_frame
-    params:
+    param:
       stream_id: 1
       end_stream: true
       pad_length: 1
       fill_max_frame_size: true
   - action: http2.wait_stream_error
-    params:
+    param:
       error_code: [FRAME_SIZE_ERROR]
 
 - name: Sends a large size HEADERS frame that exceeds the SETTINGS_MAX_FRAME_SIZEE
@@ -58,16 +58,16 @@ tests:
   transport: tcp
   protocol:
     type: http2
-    params:
+    param:
       handshake: true
   steps:
   - action: http2.send_headers_frame
-    params:
+    param:
       stream_id: 1
       end_stream: true
       end_headers: true
       pad_length: 1
       fill_max_frame_size: true
   - action: http2.wait_connection_error
-    params:
+    param:
       error_code: [FRAME_SIZE_ERROR]

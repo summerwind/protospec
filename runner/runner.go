@@ -69,12 +69,12 @@ func (r *Runner) Run() error {
 				return err
 			}
 
-			if err := conn.Init(test.Protocol.Params); err != nil {
+			if err := conn.Init(test.Protocol.Param); err != nil {
 				return err
 			}
 
 			for _, step := range test.Steps {
-				_, err = conn.Run(step.Action, step.Params)
+				_, err = conn.Run(step.Action, step.Param)
 				if err != nil {
 					if protocol.IsActionError(err) {
 						break

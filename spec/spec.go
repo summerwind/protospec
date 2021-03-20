@@ -32,13 +32,13 @@ type Test struct {
 }
 
 type TestProtocol struct {
-	Type   string          `json:"type"`
-	Params json.RawMessage `json:"params"`
+	Type  string          `json:"type"`
+	Param json.RawMessage `json:"param"`
 }
 
 type TestStep struct {
 	Action string          `json:"action"`
-	Params json.RawMessage `json:"params"`
+	Param  json.RawMessage `json:"param"`
 	Rule   TestRule        `json:"rule,omitempty"`
 }
 

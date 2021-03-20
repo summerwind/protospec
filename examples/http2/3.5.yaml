@@ -7,19 +7,19 @@ tests:
   transport: tcp
   protocol:
     type: http2
-    params:
+    param:
       handshake: false
   steps:
   - action: http2.send_data
-    params:
+    param:
       data: ["PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"]
   - action: http2.send_settings_frame
-    params:
+    param:
       ack: false
       settings:
         SETTINGS_INITIAL_WINDOW_SIZE: 1024
   - action: http2.wait_settings_frame
-    params:
+    param:
       ack: true
 
 - name: Sends invalid connection preface
@@ -27,12 +27,12 @@ tests:
   transport: tcp
   protocol:
     type: http2
-    params:
+    param:
       handshake: false
   steps:
   - action: http2.send_data
-    params:
+    param:
       data: ["INVALID CONNECTION PREFACE\r\n\r\n"]
   - action: http2.wait_connection_error
-    params:
+    param:
       error_code: ["PROTOCOL_ERROR"]

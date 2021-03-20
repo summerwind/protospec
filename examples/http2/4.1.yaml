@@ -14,7 +14,7 @@ tests:
   steps:
   - action: http2.send_data
     param:
-      # Unknown frame - Length: 8, Type: 255, Flags: 0, R: 0, StreamID: 0
+      # UNKNOWN frame (length:8, type:255, flags:0x00, R:0, stream_id:0)
       data: ["0x000008160000000000", "0x0000000000000000"]
   - action: http2.send_ping_frame
     param:
@@ -37,7 +37,7 @@ tests:
   steps:
   - action: http2.send_data
     param:
-      # PING Frame - Length: 8, Type: 6, Flags: 255, R: 0, StreamID: 0
+      # PING Frame (length:8, flags:0x16, R:0, stream_id:0)
       data: ["0x000008061600000000", "0x0000000000000000"]
   - action: http2.wait_ping_frame
     param:
@@ -55,7 +55,7 @@ tests:
   steps:
   - action: http2.send_data
     param:
-      # PING Frame - Length: 8, Type: 6, Flags: 0, R: 1, StreamID: 0
+      # PING Frame (length:8, flags:0x00, R:1, stream_id:0)
       data: ["0x000008060080000000", "0x0000000000000000"]
   - action: http2.wait_ping_frame
     param:

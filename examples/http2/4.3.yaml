@@ -12,8 +12,8 @@ tests:
   steps:
   - action: http2.send_data
     param:
-      # HEADERS frame (Length:1, flags:0x05, stream_id:1)
-      # Literal Header Field with Incremental Indexing without Length and String segment.
+      # HEADERS frame (length:1, flags:0x05, stream_id:1)
+      # Literal Header Field with Incremental Indexing without Length and String segment
       data: ["0x000001010500000001", "0x40"]
   - action: http2.wait_connection_error
     param:

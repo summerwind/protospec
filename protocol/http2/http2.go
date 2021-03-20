@@ -38,6 +38,7 @@ const (
 	ActionWaitPingFrame         = "http2.wait_ping_frame"
 	ActionWaitConnectionError   = "http2.wait_connection_error"
 	ActionWaitStreamError       = "http2.wait_stream_error"
+	ActionWaitStreamClose       = "http2.wait_stream_close"
 )
 
 var settingID = map[string]http2.SettingID{
@@ -283,6 +284,18 @@ func (p *WaitStreamErrorParam) Validate() error {
 	return nil
 }
 
+type WaitStreamCloseParam struct {
+	StreamID uint32 `json:"stream_id"`
+}
+
+func (p *WaitStreamCloseParam) Validate() error {
+	if p.StreamID == 0 {
+		return errors.New("stream_id must be greater than 0")
+	}
+
+	return nil
+}
+
 type Conn struct {
 	net.Conn
 
@@ -384,6 +397,8 @@ func (conn *Conn) Run(action string, param []byte) (interface{}, error) {
 		return conn.waitConnectionError(param)
 	case ActionWaitStreamError:
 		return conn.waitStreamError(param)
+	case ActionWaitStreamClose:
+		return conn.waitStreamClose(param)
 	default:
 		return nil, fmt.Errorf("invalid action: %s", action)
 	}
@@ -968,6 +983,56 @@ func (conn *Conn) waitStreamError(param []byte) (interface{}, error) {
 
 		if !matched {
 			return nil, protocol.NewFailed(fmt.Sprintf("unexpected error code: %s", errCode))
+		}
+
+		return nil, nil
+	}
+}
+
+func (conn *Conn) waitStreamClose(param []byte) (interface{}, error) {
+	var p WaitStreamCloseParam
+
+	if err := json.Unmarshal(param, &p); err != nil {
+		return nil, err
+	}
+
+	if err := p.Validate(); err != nil {
+		return nil, err
+	}
+
+	for {
+		f, err := conn.readFrame()
+		if err != nil {
+			if protocol.IsConnectionClosed(err) {
+				return nil, protocol.ErrConnectionClosed
+			}
+
+			if protocol.IsTimeout(err) {
+				return nil, protocol.ErrTimeout
+			}
+
+			return nil, err
+		}
+
+		if f.Header().StreamID != p.StreamID {
+			continue
+		}
+
+		switch frame := f.(type) {
+		case *http2.DataFrame:
+			if frame.StreamEnded() {
+				return nil, nil
+			}
+		case *http2.HeadersFrame:
+			if frame.StreamEnded() {
+				return nil, nil
+			}
+		case *http2.RSTStreamFrame:
+			if frame.ErrCode == http2.ErrCodeNo {
+				return nil, nil
+			}
+		default:
+			continue
 		}
 
 		return nil, nil

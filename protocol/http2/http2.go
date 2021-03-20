@@ -36,6 +36,7 @@ const (
 	ActionWaitHeadersFrame      = "http2.wait_headers_frame"
 	ActionWaitSettingsFrame     = "http2.wait_settings_frame"
 	ActionWaitPingFrame         = "http2.wait_ping_frame"
+	ActionWaitGoAwayFrame       = "http2.wait_goaway_frame"
 	ActionWaitConnectionError   = "http2.wait_connection_error"
 	ActionWaitConnectionClose   = "http2.wait_connection_close"
 	ActionWaitStreamError       = "http2.wait_stream_error"
@@ -254,6 +255,23 @@ func (p *WaitPingFrameParam) Validate() error {
 	return nil
 }
 
+type WaitGoAwayFrameParam struct {
+	LastStreamID uint32   `json:"last_stream_id"`
+	ErrorCode    []string `json:"error_code"`
+	DebugData    string   `json:"debug_data"`
+}
+
+func (p *WaitGoAwayFrameParam) Validate() error {
+	for _, code := range p.ErrorCode {
+		_, ok := errorCode[code]
+		if !ok {
+			return fmt.Errorf("invalid error code: %s", code)
+		}
+	}
+
+	return nil
+}
+
 type WaitConnectionErrorParam struct {
 	ErrorCode []string `json:"error_code"`
 }
@@ -394,6 +412,8 @@ func (conn *Conn) Run(action string, param []byte) (interface{}, error) {
 		return conn.waitSettingsFrame(param)
 	case ActionWaitPingFrame:
 		return conn.waitPingFrame(param)
+	case ActionWaitGoAwayFrame:
+		return conn.waitGoAwayFrame(param)
 	case ActionWaitConnectionError:
 		return conn.waitConnectionError(param)
 	case ActionWaitConnectionClose:
@@ -868,6 +888,53 @@ func (conn *Conn) waitPingFrame(param []byte) (interface{}, error) {
 	}
 }
 
+func (conn *Conn) waitGoAwayFrame(param []byte) (interface{}, error) {
+	var p WaitGoAwayFrameParam
+
+	if err := json.Unmarshal(param, &p); err != nil {
+		return nil, err
+	}
+
+	if err := p.Validate(); err != nil {
+		return nil, err
+	}
+
+	for {
+		f, err := conn.readFrame()
+		if err != nil {
+			return nil, protocol.HandleConnectionError(err)
+		}
+
+		gaf, ok := f.(*http2.GoAwayFrame)
+		if !ok {
+			continue
+		}
+
+		if p.LastStreamID != 0 && gaf.LastStreamID != p.LastStreamID {
+			return nil, protocol.NewFailed(fmt.Sprintf("unexpected last stream ID: %d", gaf.LastStreamID))
+		}
+
+		if len(p.DebugData) > 0 && p.DebugData != string(gaf.DebugData()) {
+			return nil, protocol.NewFailed(fmt.Sprintf("unexpected debug data: %s", gaf.DebugData()))
+		}
+
+		matched := false
+		for _, ec := range p.ErrorCode {
+			code := errorCode[ec]
+			if gaf.ErrCode == code {
+				matched = true
+				break
+			}
+		}
+
+		if !matched {
+			return nil, protocol.NewFailed(fmt.Sprintf("unexpected error code: %s", gaf.ErrCode))
+		}
+
+		return nil, nil
+	}
+}
+
 func (conn *Conn) waitConnectionError(param []byte) (interface{}, error) {
 	var (
 		p     WaitConnectionErrorParam
@@ -914,6 +981,7 @@ func (conn *Conn) waitConnectionError(param []byte) (interface{}, error) {
 		for _, code := range codes {
 			if gaf.ErrCode == code {
 				matched = true
+				break
 			}
 		}
 
@@ -998,6 +1066,7 @@ func (conn *Conn) waitStreamError(param []byte) (interface{}, error) {
 		for _, code := range codes {
 			if errCode == code {
 				matched = true
+				break
 			}
 		}
 

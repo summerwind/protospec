@@ -37,6 +37,7 @@ const (
 	ActionWaitSettingsFrame     = "http2.wait_settings_frame"
 	ActionWaitPingFrame         = "http2.wait_ping_frame"
 	ActionWaitConnectionError   = "http2.wait_connection_error"
+	ActionWaitConnectionClose   = "http2.wait_connection_close"
 	ActionWaitStreamError       = "http2.wait_stream_error"
 	ActionWaitStreamClose       = "http2.wait_stream_close"
 )
@@ -395,6 +396,8 @@ func (conn *Conn) Run(action string, param []byte) (interface{}, error) {
 		return conn.waitPingFrame(param)
 	case ActionWaitConnectionError:
 		return conn.waitConnectionError(param)
+	case ActionWaitConnectionClose:
+		return conn.waitConnectionClose(param)
 	case ActionWaitStreamError:
 		return conn.waitStreamError(param)
 	case ActionWaitStreamClose:
@@ -919,6 +922,23 @@ func (conn *Conn) waitConnectionError(param []byte) (interface{}, error) {
 		}
 
 		return nil, nil
+	}
+}
+
+func (conn *Conn) waitConnectionClose(param []byte) (interface{}, error) {
+	for {
+		_, err := conn.readFrame()
+		if err != nil {
+			if protocol.IsConnectionClosed(err) {
+				return nil, nil
+			}
+
+			if protocol.IsTimeout(err) {
+				return nil, protocol.ErrTimeout
+			}
+
+			return nil, err
+		}
 	}
 }
 

@@ -13,7 +13,7 @@ type ActionFailure struct {
 }
 
 func (e *ActionFailure) Error() string {
-	return fmt.Sprintf("failed: %s", e.Reason)
+	return e.Reason
 }
 
 type ActionSkip struct {
@@ -21,7 +21,7 @@ type ActionSkip struct {
 }
 
 func (e *ActionSkip) Error() string {
-	return fmt.Sprintf("skipped: %s", e.Reason)
+	return e.Reason
 }
 
 var (

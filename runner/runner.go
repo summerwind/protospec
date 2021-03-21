@@ -85,17 +85,17 @@ func (r *Runner) Run() error {
 			if err != nil {
 				switch {
 				case action.IsFailure(err):
-					log.Failed(id, test.Name, err.Error())
+					log.Fail(id, test.Name, err.Error())
 					failedCount += 1
 				case action.IsSkip(err):
-					log.Skipped(id, test.Name, err.Error())
+					log.Skip(id, test.Name, err.Error())
 					skippedCount += 1
 				default:
-					log.Failed(id, test.Name, err.Error())
+					log.Error(id, test.Name)
 					return err
 				}
 			} else {
-				log.Passed(id, test.Name)
+				log.Pass(id, test.Name)
 				passedCount += 1
 			}
 

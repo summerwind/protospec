@@ -16,16 +16,22 @@ func TestName(num int, name string) {
 	fmt.Printf("%s\r", aurora.Gray(12, fmt.Sprintf("#%d: %s", num, name)))
 }
 
-func Passed(num int, name string) {
+func Pass(num int, name string) {
 	fmt.Printf("%s\n", aurora.Green(fmt.Sprintf("#%d: %s", num, name)))
 }
 
-func Failed(num int, name, reason string) {
-	fmt.Printf("%s\n", aurora.Red(fmt.Sprintf("#%d: %s - %s", num, name, reason)))
+func Fail(num int, name, reason string) {
+	fmt.Printf("%s\n", aurora.Red(fmt.Sprintf("#%d: %s", num, name)))
+	fmt.Printf("%s\n", aurora.Red(fmt.Sprintf("Failed: %s", reason)))
 }
 
-func Skipped(num int, name, reason string) {
-	fmt.Printf("%s\n", aurora.Cyan(fmt.Sprintf("#%d: %s - %s", num, name, reason)))
+func Skip(num int, name, reason string) {
+	fmt.Printf("%s\n", aurora.Cyan(fmt.Sprintf("#%d: %s", num, name)))
+	fmt.Printf("%s\n", aurora.Cyan(fmt.Sprintf("Skipped: %s", reason)))
+}
+
+func Error(num int, name string) {
+	fmt.Printf("%s\n", aurora.Red(fmt.Sprintf("#%d: %s", num, name)))
 }
 
 func Debug(msg string) {

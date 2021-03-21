@@ -1,0 +1,32 @@
+id: "1"
+name: Output
+tests:
+- name: Fail
+  protocol:
+    type: debug
+  steps:
+  - action: debug.fail
+
+- name: Connection close
+  protocol:
+    type: debug
+  steps:
+  - action: debug.connection_close
+
+- name: Timeout
+  protocol:
+    type: debug
+  steps:
+  - action: debug.timeout
+
+- name: Skip
+  protocol:
+    type: debug
+  steps:
+  - action: debug.skip
+
+- name: Error
+  protocol:
+    type: debug
+  steps:
+  - action: debug.error

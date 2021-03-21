@@ -9,6 +9,7 @@ import (
 	"github.com/summerwind/protospec/log"
 	"github.com/summerwind/protospec/protocol"
 	"github.com/summerwind/protospec/protocol/action"
+	"github.com/summerwind/protospec/protocol/debug"
 	"github.com/summerwind/protospec/protocol/http2"
 	"github.com/summerwind/protospec/spec"
 )
@@ -137,6 +138,8 @@ func (r *Runner) NewConn(test spec.Test) (protocol.Conn, error) {
 	switch test.Protocol.Type {
 	case http2.ProtocolType:
 		conn, err = http2.NewConn(transport)
+	case debug.ProtocolType:
+		conn, err = debug.NewConn(transport)
 	default:
 		err = fmt.Errorf("invalid protocol: %s", test.Protocol.Type)
 	}

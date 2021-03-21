@@ -936,10 +936,7 @@ func (conn *Conn) waitGoAwayFrame(param []byte) (interface{}, error) {
 }
 
 func (conn *Conn) waitConnectionError(param []byte) (interface{}, error) {
-	var (
-		p     WaitConnectionErrorParam
-		codes []http2.ErrCode
-	)
+	var p WaitConnectionErrorParam
 
 	if err := json.Unmarshal(param, &p); err != nil {
 		return nil, err
@@ -947,15 +944,6 @@ func (conn *Conn) waitConnectionError(param []byte) (interface{}, error) {
 
 	if err := p.Validate(); err != nil {
 		return nil, err
-	}
-
-	for _, ec := range p.ErrorCode {
-		code, ok := errorCode[ec]
-		if !ok {
-			return nil, fmt.Errorf("invalid error code: %s", p.ErrorCode)
-		}
-
-		codes = append(codes, code)
 	}
 
 	for {
@@ -978,8 +966,8 @@ func (conn *Conn) waitConnectionError(param []byte) (interface{}, error) {
 		}
 
 		matched := false
-		for _, code := range codes {
-			if gaf.ErrCode == code {
+		for _, code := range p.ErrorCode {
+			if gaf.ErrCode == errorCode[code] {
 				matched = true
 				break
 			}
@@ -1011,10 +999,7 @@ func (conn *Conn) waitConnectionClose(param []byte) (interface{}, error) {
 }
 
 func (conn *Conn) waitStreamError(param []byte) (interface{}, error) {
-	var (
-		p     WaitStreamErrorParam
-		codes []http2.ErrCode
-	)
+	var p WaitStreamErrorParam
 
 	if err := json.Unmarshal(param, &p); err != nil {
 		return nil, err
@@ -1022,15 +1007,6 @@ func (conn *Conn) waitStreamError(param []byte) (interface{}, error) {
 
 	if err := p.Validate(); err != nil {
 		return nil, err
-	}
-
-	for _, ec := range p.ErrorCode {
-		code, ok := errorCode[ec]
-		if !ok {
-			return nil, fmt.Errorf("invalid error code: %s", p.ErrorCode)
-		}
-
-		codes = append(codes, code)
 	}
 
 	for {
@@ -1063,8 +1039,8 @@ func (conn *Conn) waitStreamError(param []byte) (interface{}, error) {
 		}
 
 		matched := false
-		for _, code := range codes {
-			if errCode == code {
+		for _, code := range p.ErrorCode {
+			if errCode == errorCode[code] {
 				matched = true
 				break
 			}

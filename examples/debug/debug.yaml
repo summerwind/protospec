@@ -1,6 +1,18 @@
 id: "1"
 name: Output
 tests:
+- name: Pass
+  protocol:
+    type: debug
+  steps:
+  - action: debug.pass
+
+- name: Skip
+  protocol:
+    type: debug
+  steps:
+  - action: debug.skip
+
 - name: Fail
   protocol:
     type: debug
@@ -18,12 +30,6 @@ tests:
     type: debug
   steps:
   - action: debug.timeout
-
-- name: Skip
-  protocol:
-    type: debug
-  steps:
-  - action: debug.skip
 
 - name: Error
   protocol:

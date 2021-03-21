@@ -12,8 +12,9 @@ import (
 const (
 	ProtocolType = "debug"
 
-	ActionFail            = "debug.fail"
+	ActionPass            = "debug.pass"
 	ActionSkip            = "debug.skip"
+	ActionFail            = "debug.fail"
 	ActionConnectionClose = "debug.connection_close"
 	ActionTimeout         = "debug.timeout"
 	ActionError           = "debug.error"
@@ -33,10 +34,12 @@ func (conn *Conn) Init(param []byte) error {
 
 func (conn *Conn) Run(action string, param []byte) (interface{}, error) {
 	switch action {
-	case ActionFail:
-		return conn.fail(param)
+	case ActionPass:
+		return conn.pass(param)
 	case ActionSkip:
 		return conn.skip(param)
+	case ActionFail:
+		return conn.fail(param)
 	case ActionConnectionClose:
 		return conn.connectionClose(param)
 	case ActionTimeout:
@@ -53,11 +56,15 @@ func (conn *Conn) Close() error {
 }
 
 func (conn *Conn) SetMode(server bool) {
-	// Nothing to do.
+	return
 }
 
 func (conn *Conn) SetTimeout(timeout time.Duration) {
-	// Nothing to do.
+	return
+}
+
+func (conn *Conn) pass(param []byte) (interface{}, error) {
+	return nil, nil
 }
 
 func (conn *Conn) fail(param []byte) (interface{}, error) {

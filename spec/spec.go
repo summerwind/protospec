@@ -26,6 +26,7 @@ type Test struct {
 	Name      string       `json:"name"`
 	Desc      string       `json:"desc,omitempty"`
 	Ref       string       `json:"ref,omitempty"`
+	Optional  bool         `json:"optional,omitempty"`
 	Transport string       `json:"transport,omitempty"`
 	Protocol  TestProtocol `json:"protocol"`
 	Steps     []TestStep   `json:"steps"`

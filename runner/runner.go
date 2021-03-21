@@ -18,6 +18,7 @@ type Config struct {
 	Addr     string
 	SpecPath string
 	Insecure bool
+	Strict   bool
 	Timeout  uint32
 	Verbose  bool
 }
@@ -61,6 +62,10 @@ func (r *Runner) Run() error {
 
 		for i, test := range spec.Tests {
 			id := i + 1
+
+			if !r.config.Strict && test.Optional {
+				continue
+			}
 
 			if !r.config.Verbose {
 				log.TestName(id, test.Name)

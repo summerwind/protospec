@@ -8,6 +8,7 @@ import (
 
 	"github.com/summerwind/protospec/log"
 	"github.com/summerwind/protospec/protocol"
+	"github.com/summerwind/protospec/protocol/action"
 	"github.com/summerwind/protospec/protocol/http2"
 	"github.com/summerwind/protospec/spec"
 )
@@ -76,21 +77,21 @@ func (r *Runner) Run() error {
 			for _, step := range test.Steps {
 				_, err = conn.Run(step.Action, step.Param)
 				if err != nil {
-					if protocol.IsActionError(err) {
-						break
-					} else {
-						return err
-					}
+					break
 				}
 			}
 
 			if err != nil {
-				if protocol.IsSkipped(err) {
-					log.Skipped(id, test.Name, err.Error())
-					skippedCount += 1
-				} else {
+				switch {
+				case action.IsFailure(err):
 					log.Failed(id, test.Name, err.Error())
 					failedCount += 1
+				case action.IsSkip(err):
+					log.Skipped(id, test.Name, err.Error())
+					skippedCount += 1
+				default:
+					log.Failed(id, test.Name, err.Error())
+					return err
 				}
 			} else {
 				log.Passed(id, test.Name)

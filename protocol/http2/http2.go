@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/summerwind/protospec/log"
-	"github.com/summerwind/protospec/protocol"
+	"github.com/summerwind/protospec/protocol/action"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/hpack"
 )
@@ -765,7 +765,7 @@ func (conn *Conn) waitHeadersFrame(param []byte) (interface{}, error) {
 	for {
 		f, err := conn.readFrame()
 		if err != nil {
-			return nil, protocol.HandleConnectionError(err)
+			return nil, action.HandleConnectionFailure(err)
 		}
 
 		hf, ok := f.(*http2.HeadersFrame)
@@ -799,7 +799,7 @@ func (conn *Conn) waitSettingsFrame(param []byte) (interface{}, error) {
 	for {
 		f, err := conn.readFrame()
 		if err != nil {
-			return nil, protocol.HandleConnectionError(err)
+			return nil, action.HandleConnectionFailure(err)
 		}
 
 		sf, ok := f.(*http2.SettingsFrame)
@@ -861,7 +861,7 @@ func (conn *Conn) waitPingFrame(param []byte) (interface{}, error) {
 
 		f, err := conn.readFrame()
 		if err != nil {
-			return nil, protocol.HandleConnectionError(err)
+			return nil, action.HandleConnectionFailure(err)
 		}
 
 		pf, ok := f.(*http2.PingFrame)
@@ -902,7 +902,7 @@ func (conn *Conn) waitGoAwayFrame(param []byte) (interface{}, error) {
 	for {
 		f, err := conn.readFrame()
 		if err != nil {
-			return nil, protocol.HandleConnectionError(err)
+			return nil, action.HandleConnectionFailure(err)
 		}
 
 		gaf, ok := f.(*http2.GoAwayFrame)
@@ -911,11 +911,11 @@ func (conn *Conn) waitGoAwayFrame(param []byte) (interface{}, error) {
 		}
 
 		if p.LastStreamID != 0 && gaf.LastStreamID != p.LastStreamID {
-			return nil, protocol.NewFailed(fmt.Sprintf("unexpected last stream ID: %d", gaf.LastStreamID))
+			return nil, action.Failf("unexpected last stream ID: %d", gaf.LastStreamID)
 		}
 
 		if len(p.DebugData) > 0 && p.DebugData != string(gaf.DebugData()) {
-			return nil, protocol.NewFailed(fmt.Sprintf("unexpected debug data: %s", gaf.DebugData()))
+			return nil, action.Failf("unexpected debug data: %s", gaf.DebugData())
 		}
 
 		matched := false
@@ -928,7 +928,7 @@ func (conn *Conn) waitGoAwayFrame(param []byte) (interface{}, error) {
 		}
 
 		if !matched {
-			return nil, protocol.NewFailed(fmt.Sprintf("unexpected error code: %s", gaf.ErrCode))
+			return nil, action.Failf("unexpected error code: %s", gaf.ErrCode)
 		}
 
 		return nil, nil
@@ -961,12 +961,12 @@ func (conn *Conn) waitConnectionError(param []byte) (interface{}, error) {
 	for {
 		f, err := conn.readFrame()
 		if err != nil {
-			if protocol.IsConnectionClosed(err) {
+			if action.IsConnectionClosed(err) {
 				return nil, nil
 			}
 
-			if protocol.IsTimeout(err) {
-				return nil, protocol.ErrTimeout
+			if action.IsTimeout(err) {
+				return nil, action.ErrTimeout
 			}
 
 			return nil, err
@@ -986,7 +986,7 @@ func (conn *Conn) waitConnectionError(param []byte) (interface{}, error) {
 		}
 
 		if !matched {
-			return nil, protocol.NewFailed(fmt.Sprintf("unexpected error code: %s", gaf.ErrCode))
+			return nil, action.Failf("unexpected error code: %s", gaf.ErrCode)
 		}
 
 		return nil, nil
@@ -997,12 +997,12 @@ func (conn *Conn) waitConnectionClose(param []byte) (interface{}, error) {
 	for {
 		_, err := conn.readFrame()
 		if err != nil {
-			if protocol.IsConnectionClosed(err) {
+			if action.IsConnectionClosed(err) {
 				return nil, nil
 			}
 
-			if protocol.IsTimeout(err) {
-				return nil, protocol.ErrTimeout
+			if action.IsTimeout(err) {
+				return nil, action.ErrTimeout
 			}
 
 			return nil, err
@@ -1038,12 +1038,12 @@ func (conn *Conn) waitStreamError(param []byte) (interface{}, error) {
 
 		f, err := conn.readFrame()
 		if err != nil {
-			if protocol.IsConnectionClosed(err) {
+			if action.IsConnectionClosed(err) {
 				return nil, nil
 			}
 
-			if protocol.IsTimeout(err) {
-				return nil, protocol.ErrTimeout
+			if action.IsTimeout(err) {
+				return nil, action.ErrTimeout
 			}
 
 			return nil, err
@@ -1071,7 +1071,7 @@ func (conn *Conn) waitStreamError(param []byte) (interface{}, error) {
 		}
 
 		if !matched {
-			return nil, protocol.NewFailed(fmt.Sprintf("unexpected error code: %s", errCode))
+			return nil, action.Failf("unexpected error code: %s", errCode)
 		}
 
 		return nil, nil
@@ -1092,12 +1092,12 @@ func (conn *Conn) waitStreamClose(param []byte) (interface{}, error) {
 	for {
 		f, err := conn.readFrame()
 		if err != nil {
-			if protocol.IsConnectionClosed(err) {
-				return nil, protocol.ErrConnectionClosed
+			if action.IsConnectionClosed(err) {
+				return nil, action.ErrConnectionClosed
 			}
 
-			if protocol.IsTimeout(err) {
-				return nil, protocol.ErrTimeout
+			if action.IsTimeout(err) {
+				return nil, action.ErrTimeout
 			}
 
 			return nil, err

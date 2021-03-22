@@ -20,6 +20,7 @@ func NewRunCommand() *cobra.Command {
 
 	pflag := cmd.Flags()
 	pflag.StringVarP(&c.SpecPath, "spec", "s", "spec", "Path of spec tests directory to run")
+	pflag.StringSliceVarP(&c.Tests, "test", "t", []string{}, "Test IDs to run")
 	pflag.BoolVarP(&c.Insecure, "insecure", "k", false, "Don't verify server's certificate")
 	pflag.BoolVar(&c.Strict, "strict", false, "Run all test cases including optional test cases")
 	pflag.Uint32VarP(&c.Timeout, "timeout", "o", 3, "Time seconds to test timeout")

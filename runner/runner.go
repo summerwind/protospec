@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/summerwind/protospec/log"
@@ -17,6 +18,7 @@ import (
 type Config struct {
 	Addr     string
 	SpecPath string
+	Tests    []string
 	Insecure bool
 	Strict   bool
 	Timeout  uint32
@@ -52,18 +54,40 @@ func (r *Runner) Run() error {
 
 	log.Verbose = r.config.Verbose
 
+	target := (len(r.config.Tests) != 0)
+	targetSpecs := map[string]bool{}
+	targetTests := map[string]bool{}
+
+	for _, test := range r.config.Tests {
+		parts := strings.Split(test, "/")
+		if len(parts) < 2 {
+			return fmt.Errorf("invalid test ID: %s", test)
+		}
+
+		targetSpecs[strings.Join(parts[:len(parts)-1], "/")] = true
+		targetTests[test] = true
+	}
+
 	specs, err := spec.Load(r.config.SpecPath)
 	if err != nil {
 		return err
 	}
 
 	for _, spec := range specs {
+		if _, ok := targetSpecs[spec.ID]; target && !ok {
+			continue
+		}
+
 		log.SpecName(spec.ID, spec.Name)
 
 		for i, test := range spec.Tests {
 			id := i + 1
 
 			if !r.config.Strict && test.Optional {
+				continue
+			}
+
+			if _, ok := targetTests[fmt.Sprintf("%s/%d", spec.ID, id)]; target && !ok {
 				continue
 			}
 

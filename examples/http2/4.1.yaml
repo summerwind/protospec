@@ -10,7 +10,8 @@ tests:
     param:
       handshake: true
       settings:
-        SETTINGS_INITIAL_WINDOW_SIZE: 65535
+      - id: SETTINGS_INITIAL_WINDOW_SIZE
+        value: 65535
   steps:
   - action: http2.send_data
     param:
@@ -33,7 +34,8 @@ tests:
     param:
       handshake: true
       settings:
-        SETTINGS_INITIAL_WINDOW_SIZE: 65535
+      - id: SETTINGS_INITIAL_WINDOW_SIZE
+        value: 65535
   steps:
   - action: http2.send_data
     param:
@@ -51,7 +53,8 @@ tests:
     param:
       handshake: true
       settings:
-        SETTINGS_INITIAL_WINDOW_SIZE: 65535
+      - id: SETTINGS_INITIAL_WINDOW_SIZE
+        value: 65535
   steps:
   - action: http2.send_data
     param:

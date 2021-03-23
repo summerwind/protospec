@@ -28,8 +28,11 @@ func newTestConn(t *testing.T) (*Conn, net.Conn) {
 func TestInitParam(t *testing.T) {
 	p := InitParam{
 		Handshake: true,
-		Settings: Settings{
-			"SETTINGS_INITIAL_WINDOW_SIZE": 16384,
+		Settings: []Setting{
+			{
+				ID:    "SETTINGS_INITIAL_WINDOW_SIZE",
+				Value: 16384,
+			},
 		},
 		MaxFieldValueLength: 4096,
 	}
@@ -189,14 +192,35 @@ func TestSendSettingsFrameParam(t *testing.T) {
 		{
 			param: SendSettingsFrameParam{
 				Ack: false,
-				Settings: Settings{
-					"SETTINGS_HEADER_TABLE_SIZE":      1024,
-					"SETTINGS_ENABLE_PUSH":            1,
-					"SETTINGS_MAX_CONCURRENT_STREAMS": 100,
-					"SETTINGS_INITIAL_WINDOW_SIZE":    16384,
-					"SETTINGS_MAX_FRAME_SIZE":         4096,
-					"SETTINGS_MAX_HEADER_LIST_SIZE":   1024,
-					"SETTINGS_UNKNOWN":                1,
+				Settings: []Setting{
+					{
+						ID:    "SETTINGS_HEADER_TABLE_SIZE",
+						Value: 1024,
+					},
+					{
+						ID:    "SETTINGS_ENABLE_PUSH",
+						Value: 1,
+					},
+					{
+						ID:    "SETTINGS_MAX_CONCURRENT_STREAMS",
+						Value: 100,
+					},
+					{
+						ID:    "SETTINGS_INITIAL_WINDOW_SIZE",
+						Value: 16384,
+					},
+					{
+						ID:    "SETTINGS_MAX_FRAME_SIZE",
+						Value: 4096,
+					},
+					{
+						ID:    "SETTINGS_MAX_HEADER_LIST_SIZE",
+						Value: 1024,
+					},
+					{
+						ID:    "SETTINGS_UNKNOWN",
+						Value: 1,
+					},
 				},
 			},
 			err: false,
@@ -204,8 +228,11 @@ func TestSendSettingsFrameParam(t *testing.T) {
 		{
 			param: SendSettingsFrameParam{
 				Ack: false,
-				Settings: Settings{
-					"SETTINGS_INVALID": 1,
+				Settings: []Setting{
+					{
+						ID:    "SETTINGS_INVALID",
+						Value: 1,
+					},
 				},
 			},
 			err: true,
@@ -299,7 +326,7 @@ func TestWaitSettingsFrameParam(t *testing.T) {
 		{
 			param: WaitSettingsFrameParam{
 				Ack: false,
-				Settings: Settings{
+				Settings: map[string]uint32{
 					"SETTINGS_HEADER_TABLE_SIZE":      1024,
 					"SETTINGS_ENABLE_PUSH":            1,
 					"SETTINGS_MAX_CONCURRENT_STREAMS": 100,
@@ -314,7 +341,7 @@ func TestWaitSettingsFrameParam(t *testing.T) {
 		{
 			param: WaitSettingsFrameParam{
 				Ack: false,
-				Settings: Settings{
+				Settings: map[string]uint32{
 					"SETTINGS_INVALID": 1,
 				},
 			},
@@ -323,7 +350,7 @@ func TestWaitSettingsFrameParam(t *testing.T) {
 		{
 			param: WaitSettingsFrameParam{
 				Ack: true,
-				Settings: Settings{
+				Settings: map[string]uint32{
 					"SETTINGS_INITIAL_WINDOW_SIZE": 16384,
 				},
 			},
@@ -498,8 +525,11 @@ func TestInit(t *testing.T) {
 
 	param := InitParam{
 		Handshake: true,
-		Settings: Settings{
-			"SETTINGS_INITIAL_WINDOW_SIZE": 65535,
+		Settings: []Setting{
+			{
+				ID:    "SETTINGS_INITIAL_WINDOW_SIZE",
+				Value: 65535,
+			},
 		},
 		MaxFieldValueLength: 4096,
 	}
@@ -1044,20 +1074,44 @@ func TestRunSendSettingsFrame(t *testing.T) {
 	tests := []SendSettingsFrameParam{
 		{
 			Ack: false,
-			Settings: map[string]uint32{
-				"SETTINGS_HEADER_TABLE_SIZE":      4096,
-				"SETTINGS_ENABLE_PUSH":            1,
-				"SETTINGS_MAX_CONCURRENT_STREAMS": 100,
-				"SETTINGS_INITIAL_WINDOW_SIZE":    65535,
-				"SETTINGS_MAX_FRAME_SIZE":         16384,
-				"SETTINGS_MAX_HEADER_LIST_SIZE":   1024,
-				"SETTINGS_UNKNOWN":                1,
+			Settings: []Setting{
+				{
+					ID:    "SETTINGS_HEADER_TABLE_SIZE",
+					Value: 4096,
+				},
+				{
+					ID:    "SETTINGS_ENABLE_PUSH",
+					Value: 1,
+				},
+				{
+					ID:    "SETTINGS_MAX_CONCURRENT_STREAMS",
+					Value: 100,
+				},
+				{
+					ID:    "SETTINGS_INITIAL_WINDOW_SIZE",
+					Value: 65535,
+				},
+				{
+					ID:    "SETTINGS_MAX_FRAME_SIZE",
+					Value: 16384,
+				},
+				{
+					ID:    "SETTINGS_MAX_HEADER_LIST_SIZE",
+					Value: 1024,
+				},
+				{
+					ID:    "SETTINGS_UNKNOWN",
+					Value: 1,
+				},
 			},
 		},
 		{
 			Ack: true,
-			Settings: map[string]uint32{
-				"SETTINGS_INITIAL_WINDOW_SIZE": 65535,
+			Settings: []Setting{
+				{
+					ID:    "SETTINGS_INITIAL_WINDOW_SIZE",
+					Value: 65535,
+				},
 			},
 		},
 	}
@@ -1095,21 +1149,21 @@ func TestRunSendSettingsFrame(t *testing.T) {
 					return
 				}
 			} else {
-				for key, val := range param.Settings {
-					id, ok := settingID[key]
+				for _, setting := range param.Settings {
+					id, ok := settingID[setting.ID]
 					if !ok {
-						ch <- fmt.Errorf("invalid setting key: %s", key)
+						ch <- fmt.Errorf("invalid setting key: %s", setting.ID)
 						return
 					}
 
 					v, ok := sf.Value(id)
 					if !ok {
-						ch <- fmt.Errorf("value not found: %s", key)
+						ch <- fmt.Errorf("value not found: %s", setting.ID)
 						return
 					}
 
-					if v != val {
-						ch <- fmt.Errorf("unexpected value: key:%s, value:%d", key, v)
+					if v != setting.Value {
+						ch <- fmt.Errorf("unexpected value: key:%s, value:%d", setting.ID, v)
 						return
 					}
 				}
@@ -1145,8 +1199,11 @@ func TestRunSendSettingsFrame(t *testing.T) {
 			"invalid",
 			SendSettingsFrameParam{
 				Ack: false,
-				Settings: map[string]uint32{
-					"SETTINGS_INVALID": 1,
+				Settings: []Setting{
+					{
+						ID:    "SETTINGS_INVALID",
+						Value: 1,
+					},
 				},
 			},
 		}

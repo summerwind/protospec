@@ -75,7 +75,10 @@ func init() {
 	rand.Seed(time.Now().Unix())
 }
 
-type Settings map[string]uint32
+type Setting struct {
+	ID    string `json:"id"`
+	Value uint32 `json:"value"`
+}
 
 type Field struct {
 	Name      string `json:"name"`
@@ -90,12 +93,19 @@ type Priority struct {
 }
 
 type InitParam struct {
-	Handshake           bool     `json:"handshake"`
-	Settings            Settings `json:"settings"`
-	MaxFieldValueLength uint32   `json:"max_field_value_length"`
+	Handshake           bool      `json:"handshake"`
+	Settings            []Setting `json:"settings"`
+	MaxFieldValueLength uint32    `json:"max_field_value_length"`
 }
 
 func (p *InitParam) Validate() error {
+	for _, setting := range p.Settings {
+		_, ok := settingID[setting.ID]
+		if !ok {
+			return fmt.Errorf("invalid setting ID: %s", setting.ID)
+		}
+	}
+
 	return nil
 }
 
@@ -171,15 +181,15 @@ func (p *SendRSTStreamFrameParam) Validate() error {
 }
 
 type SendSettingsFrameParam struct {
-	Ack      bool     `json:"ack"`
-	Settings Settings `json:"settings"`
+	Ack      bool      `json:"ack"`
+	Settings []Setting `json:"settings"`
 }
 
 func (p *SendSettingsFrameParam) Validate() error {
-	for name := range p.Settings {
-		_, ok := settingID[name]
+	for _, setting := range p.Settings {
+		_, ok := settingID[setting.ID]
 		if !ok {
-			return fmt.Errorf("invalid setting name: %s", name)
+			return fmt.Errorf("invalid setting ID: %s", setting.ID)
 		}
 	}
 
@@ -227,8 +237,8 @@ func (p *WaitHeadersFrameParam) Validate() error {
 }
 
 type WaitSettingsFrameParam struct {
-	Ack      bool     `json:"ack"`
-	Settings Settings `json:"settings"`
+	Ack      bool              `json:"ack"`
+	Settings map[string]uint32 `json:"settings"`
 }
 
 func (p *WaitSettingsFrameParam) Validate() error {
@@ -236,10 +246,10 @@ func (p *WaitSettingsFrameParam) Validate() error {
 		return errors.New("settings cannot be specified when ack is 'true'")
 	}
 
-	for name := range p.Settings {
-		_, ok := settingID[name]
+	for key, _ := range p.Settings {
+		_, ok := settingID[key]
 		if !ok {
-			return fmt.Errorf("invalid setting name: %s", name)
+			return fmt.Errorf("invalid setting ID: %s", key)
 		}
 	}
 
@@ -457,19 +467,17 @@ func (conn *Conn) readFrame() (http2.Frame, error) {
 	return f, err
 }
 
-func (conn *Conn) handshake(settings Settings) error {
+func (conn *Conn) handshake(settings []Setting) error {
 	var (
 		initSettings []http2.Setting
 		state        int
 	)
 
-	for key, val := range settings {
-		sid, ok := settingID[key]
-		if !ok {
-			return fmt.Errorf("invalid settings: %s", key)
-		}
-
-		initSettings = append(initSettings, http2.Setting{ID: sid, Val: val})
+	for _, setting := range settings {
+		initSettings = append(initSettings, http2.Setting{
+			ID:  settingID[setting.ID],
+			Val: setting.Value,
+		})
 	}
 
 	fmt.Fprintf(conn, http2.ClientPreface)
@@ -688,13 +696,11 @@ func (conn *Conn) sendSettingsFrame(param []byte) (interface{}, error) {
 		return nil, conn.framer.WriteSettingsAck()
 	}
 
-	for key, val := range p.Settings {
-		sid, ok := settingID[key]
-		if !ok {
-			return nil, fmt.Errorf("invalid settings: %s", key)
-		}
-
-		settings = append(settings, http2.Setting{ID: sid, Val: val})
+	for _, setting := range p.Settings {
+		settings = append(settings, http2.Setting{
+			ID:  settingID[setting.ID],
+			Val: setting.Value,
+		})
 	}
 
 	defer conn.logWriteFrame()

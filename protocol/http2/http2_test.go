@@ -1369,6 +1369,121 @@ func TestRunSendPingFrame(t *testing.T) {
 	})
 }
 
+func TestRunSendContinurationFrame(t *testing.T) {
+	param := SendContinuationFrameParam{
+		StreamID:   1,
+		EndHeaders: false,
+		HeaderFields: []Field{
+			{
+				Name:  "test",
+				Value: "test",
+			},
+		},
+	}
+
+	conn, server := newTestConn(t)
+	ch := make(chan error, 1)
+
+	go func() {
+		framer := http2.NewFramer(server, server)
+		framer.AllowIllegalWrites = true
+		framer.AllowIllegalReads = true
+
+		f, err := framer.ReadFrame()
+		if err != nil {
+			ch <- err
+			return
+		}
+
+		cf, ok := f.(*http2.ContinuationFrame)
+		if !ok {
+			ch <- fmt.Errorf("unexpected frame: %s", f)
+			return
+		}
+
+		if cf.StreamID != param.StreamID {
+			ch <- fmt.Errorf("unexpected stream ID: %s", f)
+			return
+		}
+
+		if cf.HeadersEnded() != param.EndHeaders {
+			ch <- fmt.Errorf("unexpected END_HEADERS: %s", f)
+			return
+		}
+
+		var fields []Field
+		decoder := hpack.NewDecoder(4096, func(f hpack.HeaderField) {
+			fields = append(fields, Field(f))
+		})
+
+		_, err = decoder.Write(cf.HeaderBlockFragment())
+		for _, pf := range param.HeaderFields {
+			valid := false
+			for _, f := range fields {
+				if pf.Name == f.Name && pf.Value == f.Value {
+					valid = true
+				}
+			}
+
+			if !valid {
+				ch <- fmt.Errorf("unexpected header field: %s", pf.Name)
+				return
+			}
+		}
+
+		close(ch)
+	}()
+
+	buf, err := json.Marshal(param)
+	if err != nil {
+		t.Errorf("marshal error: %v", err)
+	}
+
+	res, err := conn.Run(ActionSendContinuationFrame, buf)
+	if err != nil {
+		t.Errorf("run error: %v", err)
+	}
+	if res != nil {
+		t.Errorf("unexpected result: %v", res)
+	}
+
+	if err = conn.Close(); err != nil {
+		t.Errorf("close error: %v", err)
+	}
+
+	if err := <-ch; err != nil {
+		t.Errorf("server error: %v", err)
+	}
+
+	t.Run("invalid param", func(t *testing.T) {
+		tests := []interface{}{
+			"invalid",
+			SendContinuationFrameParam{
+				StreamID:     1,
+				EndHeaders:   true,
+				HeaderFields: []Field{},
+			},
+		}
+
+		for i, param := range tests {
+			conn, _ := newTestConn(t)
+
+			buf, err := json.Marshal(param)
+			if err != nil {
+				t.Errorf("[%d] marshal error: %v", i, err)
+			}
+
+			res, err := conn.Run(ActionSendContinuationFrame, buf)
+			if err == nil {
+				t.Errorf("[%d] unexpected nil error", i)
+			}
+			if res != nil {
+				t.Errorf("[%d] unexpected result: %v", i, res)
+			}
+		}
+	})
+}
+
 func TestRunWaitHeadersFrame(t *testing.T) {
 	tests := []struct {
 		param    WaitHeadersFrameParam

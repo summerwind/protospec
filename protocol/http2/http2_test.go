@@ -26,20 +26,49 @@ func newTestConn(t *testing.T) (*Conn, net.Conn) {
 }
 
 func TestInitParam(t *testing.T) {
-	p := InitParam{
-		Handshake: true,
-		Settings: []Setting{
-			{
-				ID:    "SETTINGS_INITIAL_WINDOW_SIZE",
-				Value: 16384,
+	tests := []struct {
+		param InitParam
+		err   bool
+	}{
+		{
+			param: InitParam{
+				Handshake: true,
+				Settings: []Setting{
+					{
+						ID:    "SETTINGS_INITIAL_WINDOW_SIZE",
+						Value: 16384,
+					},
+				},
+				MaxFieldValueLength: 4096,
 			},
+			err: false,
 		},
-		MaxFieldValueLength: 4096,
+		{
+			param: InitParam{
+				Handshake: true,
+				Settings: []Setting{
+					{
+						ID:    "SETTINGS_INVALID",
+						Value: 1,
+					},
+				},
+				MaxFieldValueLength: 4096,
+			},
+			err: true,
+		},
 	}
 
-	err := p.Validate()
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
+	for i, test := range tests {
+		err := test.param.Validate()
+		if test.err {
+			if err == nil {
+				t.Errorf("[%d] unexpected nil error", i)
+			}
+		} else {
+			if err != nil {
+				t.Errorf("[%d] unexpected error: %v", i, err)
+			}
+		}
 	}
 }
 
@@ -552,17 +581,32 @@ func TestInit(t *testing.T) {
 	}
 
 	t.Run("invalid param", func(t *testing.T) {
-		conn, _ := newTestConn(t)
-		param := "invalid"
-
-		buf, err := json.Marshal(param)
-		if err != nil {
-			t.Errorf("marshal error: %v", err)
+		tests := []interface{}{
+			"invalid",
+			InitParam{
+				Handshake: true,
+				Settings: []Setting{
+					{
+						ID:    "SETTINGS_INVALID",
+						Value: 1,
+					},
+				},
+				MaxFieldValueLength: 4096,
+			},
 		}
 
-		err = conn.Init(buf)
-		if err == nil {
-			t.Error("unexpected nil error")
+		for i, param := range tests {
+			conn, _ := newTestConn(t)
+
+			buf, err := json.Marshal(param)
+			if err != nil {
+				t.Errorf("[%d] marshal error: %v", i, err)
+			}
+
+			err = conn.Init(buf)
+			if err == nil {
+				t.Errorf("[%d] unexpected nil error", i)
+			}
 		}
 	})
 }

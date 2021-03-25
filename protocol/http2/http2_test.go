@@ -1114,6 +1114,99 @@ func TestRunSendPriorityFrame(t *testing.T) {
 	})
 }
 
+func TestRunSendRSTStreamFrame(t *testing.T) {
+	param := SendRSTStreamFrameParam{
+		StreamID:  1,
+		ErrorCode: "PROTOCOL_ERROR",
+	}
+
+	conn, server := newTestConn(t)
+	ch := make(chan error, 1)
+
+	go func() {
+		framer := http2.NewFramer(server, server)
+		framer.AllowIllegalWrites = true
+		framer.AllowIllegalReads = true
+
+		f, err := framer.ReadFrame()
+		if err != nil {
+			ch <- err
+			return
+		}
+
+		rsf, ok := f.(*http2.RSTStreamFrame)
+		if !ok {
+			ch <- fmt.Errorf("unexpected frame: %s", f)
+			return
+		}
+
+		if rsf.StreamID != param.StreamID {
+			ch <- fmt.Errorf("unexpected stream ID: %v", rsf.StreamID)
+			return
+		}
+
+		if rsf.ErrCode != errorCode[param.ErrorCode] {
+			ch <- fmt.Errorf("unexpected error code: %v", rsf.ErrCode)
+			return
+		}
+
+		close(ch)
+	}()
+
+	buf, err := json.Marshal(param)
+	if err != nil {
+		t.Errorf("marshal error: %v", err)
+	}
+
+	res, err := conn.Run(ActionSendRSTStreamFrame, buf)
+	if err != nil {
+		t.Errorf("run error: %v", err)
+	}
+	if res != nil {
+		t.Errorf("unexpected result: %v", res)
+	}
+
+	if err := conn.Close(); err != nil {
+		t.Errorf("close error: %v", err)
+	}
+
+	if err = <-ch; err != nil {
+		t.Errorf("server error: %v", err)
+	}
+
+	t.Run("invalid param", func(t *testing.T) {
+		tests := []interface{}{
+			"invalid",
+			SendSettingsFrameParam{
+				Ack: false,
+				Settings: []Setting{
+					{
+						ID:    "SETTINGS_INVALID",
+						Value: 1,
+					},
+				},
+			},
+		}
+
+		for i, param := range tests {
+			conn, _ := newTestConn(t)
+
+			buf, err := json.Marshal(param)
+			if err != nil {
+				t.Errorf("[%d] marshal error: %v", i, err)
+			}
+
+			res, err := conn.Run(ActionSendRSTStreamFrame, buf)
+			if err == nil {
+				t.Errorf("[%d] unexpected nil error", i)
+			}
+			if res != nil {
+				t.Errorf("[%d] unexpected result: %v", i, res)
+			}
+		}
+	})
+}
+
 func TestRunSendSettingsFrame(t *testing.T) {
 	tests := []SendSettingsFrameParam{
 		{

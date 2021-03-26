@@ -34,6 +34,7 @@ const (
 	ActionSendWindowUpdateFrame = "http2.send_window_update_frame"
 	ActionSendContinuationFrame = "http2.send_continuation_frame"
 	ActionWaitHeadersFrame      = "http2.wait_headers_frame"
+	ActionWaitRSTStreamFrame    = "http2.wait_rst_stream_frame"
 	ActionWaitSettingsFrame     = "http2.wait_settings_frame"
 	ActionWaitPingFrame         = "http2.wait_ping_frame"
 	ActionWaitGoAwayFrame       = "http2.wait_goaway_frame"
@@ -236,6 +237,22 @@ func (p *WaitHeadersFrameParam) Validate() error {
 	return nil
 }
 
+type WaitRSTStreamFrameParam struct {
+	StreamID  uint32   `json:"stream_id"`
+	ErrorCode []string `json:"error_code"`
+}
+
+func (p *WaitRSTStreamFrameParam) Validate() error {
+	for _, code := range p.ErrorCode {
+		_, ok := errorCode[code]
+		if !ok {
+			return fmt.Errorf("invalid error code: %s", code)
+		}
+	}
+
+	return nil
+}
+
 type WaitSettingsFrameParam struct {
 	Ack      bool              `json:"ack"`
 	Settings map[string]uint32 `json:"settings"`
@@ -418,6 +435,8 @@ func (conn *Conn) Run(action string, param []byte) (interface{}, error) {
 		return conn.sendContinuationFrame(param)
 	case ActionWaitHeadersFrame:
 		return conn.waitHeadersFrame(param)
+	case ActionWaitRSTStreamFrame:
+		return conn.waitRSTStreamFrame(param)
 	case ActionWaitSettingsFrame:
 		return conn.waitSettingsFrame(param)
 	case ActionWaitPingFrame:
@@ -788,6 +807,49 @@ func (conn *Conn) waitHeadersFrame(param []byte) (interface{}, error) {
 		if matched {
 			return nil, nil
 		}
+	}
+}
+
+func (conn *Conn) waitRSTStreamFrame(param []byte) (interface{}, error) {
+	var p WaitRSTStreamFrameParam
+
+	if err := json.Unmarshal(param, &p); err != nil {
+		return nil, err
+	}
+
+	if err := p.Validate(); err != nil {
+		return nil, err
+	}
+
+	for {
+		f, err := conn.readFrame()
+		if err != nil {
+			return nil, action.HandleConnectionFailure(err)
+		}
+
+		rsf, ok := f.(*http2.RSTStreamFrame)
+		if !ok {
+			continue
+		}
+
+		if p.StreamID != 0 && rsf.StreamID != p.StreamID {
+			return nil, action.Failf("unexpected stream ID: %d", rsf.StreamID)
+		}
+
+		matched := false
+		for _, ec := range p.ErrorCode {
+			code := errorCode[ec]
+			if rsf.ErrCode == code {
+				matched = true
+				break
+			}
+		}
+
+		if !matched {
+			return nil, action.Failf("unexpected error code: %s", rsf.ErrCode)
+		}
+
+		return nil, nil
 	}
 }
 

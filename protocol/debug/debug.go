@@ -1,6 +1,7 @@
 package debug
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -19,6 +20,10 @@ const (
 	ActionTimeout         = "debug.timeout"
 	ActionError           = "debug.error"
 )
+
+type Param struct {
+	Message string `json:"message"`
+}
 
 type Conn struct {
 	net.Conn
@@ -68,11 +73,33 @@ func (conn *Conn) pass(param []byte) (interface{}, error) {
 }
 
 func (conn *Conn) fail(param []byte) (interface{}, error) {
-	return nil, action.Fail("this action is always failed")
+	var p Param
+
+	if err := json.Unmarshal(param, &p); err != nil {
+		return nil, err
+	}
+
+	message := p.Message
+	if message == "" {
+		message = "this action is always failed"
+	}
+
+	return nil, action.Fail(message)
 }
 
 func (conn *Conn) skip(param []byte) (interface{}, error) {
-	return nil, action.Skip("this action is always skipped")
+	var p Param
+
+	if err := json.Unmarshal(param, &p); err != nil {
+		return nil, err
+	}
+
+	message := p.Message
+	if message == "" {
+		message = "this action is always skipped"
+	}
+
+	return nil, action.Skip(message)
 }
 
 func (conn *Conn) connectionClose(param []byte) (interface{}, error) {
@@ -84,5 +111,16 @@ func (conn *Conn) timeout(param []byte) (interface{}, error) {
 }
 
 func (conn *Conn) error(param []byte) (interface{}, error) {
-	return nil, errors.New("this action returns an error")
+	var p Param
+
+	if err := json.Unmarshal(param, &p); err != nil {
+		return nil, err
+	}
+
+	message := p.Message
+	if message == "" {
+		message = "this action returns an error"
+	}
+
+	return nil, errors.New(message)
 }

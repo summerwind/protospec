@@ -100,12 +100,22 @@ func (r *Runner) Run() error {
 				return err
 			}
 
-			if err := conn.Init(test.Protocol.Param); err != nil {
+			param := test.Protocol.Param
+			if len(param) == 0 {
+				param = []byte("{}")
+			}
+
+			if err := conn.Init(param); err != nil {
 				return err
 			}
 
 			for _, step := range test.Steps {
-				_, err = conn.Run(step.Action, step.Param)
+				param = step.Param
+				if len(param) == 0 {
+					param = []byte("{}")
+				}
+
+				_, err = conn.Run(step.Action, param)
 				if err != nil {
 					break
 				}

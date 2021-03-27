@@ -31,6 +31,7 @@ const (
 	ActionSendRSTStreamFrame    = "http2.send_rst_stream_frame"
 	ActionSendSettingsFrame     = "http2.send_settings_frame"
 	ActionSendPingFrame         = "http2.send_ping_frame"
+	ActionSendGoAwayFrame       = "http2.send_goaway_frame"
 	ActionSendWindowUpdateFrame = "http2.send_window_update_frame"
 	ActionSendContinuationFrame = "http2.send_continuation_frame"
 	ActionWaitHeadersFrame      = "http2.wait_headers_frame"
@@ -203,6 +204,21 @@ type SendPingFrameParam struct {
 }
 
 func (p *SendPingFrameParam) Validate() error {
+	return nil
+}
+
+type SendGoAwayFrameParam struct {
+	LastStreamID        uint32 `json:"last_stream_id"`
+	ErrorCode           string `json:"error_code"`
+	AdditionalDebugData string `json:"additional_debug_data"`
+}
+
+func (p *SendGoAwayFrameParam) Validate() error {
+	_, ok := errorCode[p.ErrorCode]
+	if !ok {
+		return fmt.Errorf("invalid error code: %s", p.ErrorCode)
+	}
+
 	return nil
 }
 
@@ -429,6 +445,8 @@ func (conn *Conn) Run(action string, param []byte) (interface{}, error) {
 		return conn.sendSettingsFrame(param)
 	case ActionSendPingFrame:
 		return conn.sendPingFrame(param)
+	case ActionSendGoAwayFrame:
+		return conn.sendGoAwayFrame(param)
 	case ActionSendWindowUpdateFrame:
 		return conn.sendWindowUpdateFrame(param)
 	case ActionSendContinuationFrame:
@@ -744,6 +762,21 @@ func (conn *Conn) sendPingFrame(param []byte) (interface{}, error) {
 
 	defer conn.logWriteFrame()
 	return nil, conn.framer.WritePing(p.Ack, data)
+}
+
+func (conn *Conn) sendGoAwayFrame(param []byte) (interface{}, error) {
+	var p SendGoAwayFrameParam
+
+	if err := json.Unmarshal(param, &p); err != nil {
+		return nil, err
+	}
+
+	if err := p.Validate(); err != nil {
+		return nil, err
+	}
+
+	defer conn.logWriteFrame()
+	return nil, conn.framer.WriteGoAway(p.LastStreamID, errorCode[p.ErrorCode], []byte(p.AdditionalDebugData))
 }
 
 func (conn *Conn) sendWindowUpdateFrame(param []byte) (interface{}, error) {

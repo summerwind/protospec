@@ -62,13 +62,13 @@ func Load(dir string) ([]Spec, error) {
 
 		buf, err := ioutil.ReadFile(p)
 		if err != nil {
-			return fmt.Errorf("failed to read file: %w", err)
+			return fmt.Errorf("failed to read file: %s - %w", p, err)
 		}
 
 		var spec Spec
 		err = yaml.Unmarshal(buf, &spec)
 		if err != nil {
-			return fmt.Errorf("failed to parse spec: %w", err)
+			return fmt.Errorf("failed to parse spec: %s - %w", p, err)
 		}
 
 		specs = append(specs, spec)

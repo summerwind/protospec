@@ -36,6 +36,7 @@ const (
 	ActionSendWindowUpdateFrame = "http2.send_window_update_frame"
 	ActionSendContinuationFrame = "http2.send_continuation_frame"
 
+	ActionWaitDataFrame       = "http2.wait_data_frame"
 	ActionWaitHeadersFrame    = "http2.wait_headers_frame"
 	ActionWaitRSTStreamFrame  = "http2.wait_rst_stream_frame"
 	ActionWaitSettingsFrame   = "http2.wait_settings_frame"
@@ -268,6 +269,18 @@ func (p *SendContinuationFrameParam) Validate() error {
 	return nil
 }
 
+type WaitDataFrameParam struct {
+	StreamID   uint32  `json:"stream_id"`
+	EndStream  *bool   `json:"end_stream"`
+	Data       *string `json:"data"`
+	DataLength *uint32 `json:"data_length"`
+	PadLength  *uint8  `json:"pad_length"`
+}
+
+func (p *WaitDataFrameParam) Validate() error {
+	return nil
+}
+
 type WaitHeadersFrameParam struct {
 	StreamID uint32 `json:"stream_id"`
 }
@@ -485,6 +498,8 @@ func (conn *Conn) Run(action string, param []byte) (interface{}, error) {
 		return conn.sendWindowUpdateFrame(param)
 	case ActionSendContinuationFrame:
 		return conn.sendContinuationFrame(param)
+	case ActionWaitDataFrame:
+		return conn.waitDataFrame(param)
 	case ActionWaitHeadersFrame:
 		return conn.waitHeadersFrame(param)
 	case ActionWaitRSTStreamFrame:
@@ -887,6 +902,52 @@ func (conn *Conn) sendContinuationFrame(param []byte) (interface{}, error) {
 
 	defer conn.logWriteFrame()
 	return nil, conn.framer.WriteContinuation(p.StreamID, p.EndHeaders, conn.encodeHeaderFields(p.HeaderFields))
+}
+
+func (conn *Conn) waitDataFrame(param []byte) (interface{}, error) {
+	var p WaitDataFrameParam
+
+	if err := json.Unmarshal(param, &p); err != nil {
+		return nil, err
+	}
+
+	if err := p.Validate(); err != nil {
+		return nil, err
+	}
+
+	for {
+		f, err := conn.readFrame()
+		if err != nil {
+			return nil, action.HandleConnectionFailure(err)
+		}
+
+		df, ok := f.(*http2.DataFrame)
+		if !ok {
+			continue
+		}
+
+		matched := true
+
+		if p.StreamID != 0 && (df.StreamID != p.StreamID) {
+			matched = false
+		}
+		if p.EndStream != nil && (df.StreamEnded() != *p.EndStream) {
+			matched = false
+		}
+		if p.Data != nil && !bytes.Equal(df.Data(), []byte(*p.Data)) {
+			matched = false
+		}
+		if p.DataLength != nil && (len(df.Data()) != int(*p.DataLength)) {
+			matched = false
+		}
+		if p.PadLength != nil && (int(df.Header().Length)-len(df.Data()) != int(*p.PadLength)) {
+			matched = false
+		}
+
+		if matched {
+			return nil, nil
+		}
+	}
 }
 
 func (conn *Conn) waitHeadersFrame(param []byte) (interface{}, error) {

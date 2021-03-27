@@ -35,15 +35,18 @@ const (
 	ActionSendGoAwayFrame       = "http2.send_goaway_frame"
 	ActionSendWindowUpdateFrame = "http2.send_window_update_frame"
 	ActionSendContinuationFrame = "http2.send_continuation_frame"
-	ActionWaitHeadersFrame      = "http2.wait_headers_frame"
-	ActionWaitRSTStreamFrame    = "http2.wait_rst_stream_frame"
-	ActionWaitSettingsFrame     = "http2.wait_settings_frame"
-	ActionWaitPingFrame         = "http2.wait_ping_frame"
-	ActionWaitGoAwayFrame       = "http2.wait_goaway_frame"
-	ActionWaitConnectionError   = "http2.wait_connection_error"
-	ActionWaitConnectionClose   = "http2.wait_connection_close"
-	ActionWaitStreamError       = "http2.wait_stream_error"
-	ActionWaitStreamClose       = "http2.wait_stream_close"
+
+	ActionWaitHeadersFrame    = "http2.wait_headers_frame"
+	ActionWaitRSTStreamFrame  = "http2.wait_rst_stream_frame"
+	ActionWaitSettingsFrame   = "http2.wait_settings_frame"
+	ActionWaitPingFrame       = "http2.wait_ping_frame"
+	ActionWaitGoAwayFrame     = "http2.wait_goaway_frame"
+	ActionWaitConnectionError = "http2.wait_connection_error"
+	ActionWaitConnectionClose = "http2.wait_connection_close"
+	ActionWaitStreamError     = "http2.wait_stream_error"
+	ActionWaitStreamClose     = "http2.wait_stream_close"
+
+	ActionTestDataLength = "http2.test_data_length"
 )
 
 var settingID = map[string]http2.SettingID{
@@ -378,6 +381,15 @@ func (p *WaitStreamCloseParam) Validate() error {
 	return nil
 }
 
+type TestDataLengthParam struct {
+	StreamID          uint32 `json:"stream_id"`
+	MinimumDataLength uint32 `json:"minumum_data_length"`
+}
+
+func (p *TestDataLengthParam) Validate() error {
+	return nil
+}
+
 type Conn struct {
 	net.Conn
 
@@ -491,6 +503,8 @@ func (conn *Conn) Run(action string, param []byte) (interface{}, error) {
 		return conn.waitStreamError(param)
 	case ActionWaitStreamClose:
 		return conn.waitStreamClose(param)
+	case ActionTestDataLength:
+		return conn.testDataLength(param)
 	default:
 		return nil, fmt.Errorf("invalid action: %s", action)
 	}
@@ -1269,6 +1283,62 @@ func (conn *Conn) waitStreamClose(param []byte) (interface{}, error) {
 
 		return nil, nil
 	}
+}
+
+func (conn *Conn) testDataLength(param []byte) (interface{}, error) {
+	var (
+		p       TestDataLengthParam
+		dataLen uint32
+		ended   bool
+	)
+
+	if err := json.Unmarshal(param, &p); err != nil {
+		return nil, err
+	}
+
+	if err := p.Validate(); err != nil {
+		return nil, err
+	}
+
+	hfp := http2.HeadersFrameParam{
+		StreamID:      p.StreamID,
+		EndStream:     true,
+		EndHeaders:    true,
+		BlockFragment: conn.encodeHeaderFields(conn.setDefaultHeaderFields([]Field{})),
+	}
+	conn.framer.WriteHeaders(hfp)
+	conn.logWriteFrame()
+
+	for {
+		f, err := conn.readFrame()
+		if err != nil {
+			return nil, action.HandleConnectionFailure(err)
+		}
+
+		if f.Header().StreamID != p.StreamID {
+			continue
+		}
+
+		switch frame := f.(type) {
+		case *http2.DataFrame:
+			dataLen += uint32(frame.Header().Length)
+			ended = frame.StreamEnded()
+		case *http2.HeadersFrame:
+			ended = frame.StreamEnded()
+		default:
+			continue
+		}
+
+		if ended {
+			break
+		}
+	}
+
+	if dataLen < p.MinimumDataLength {
+		return nil, action.Skipf("data length is not long enough: %d", dataLen)
+	}
+
+	return nil, nil
 }
 
 func (conn *Conn) encodeHeaderFields(fields []Field) []byte {

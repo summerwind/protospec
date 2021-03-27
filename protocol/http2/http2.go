@@ -30,6 +30,7 @@ const (
 	ActionSendPriorityFrame     = "http2.send_priority_frame"
 	ActionSendRSTStreamFrame    = "http2.send_rst_stream_frame"
 	ActionSendSettingsFrame     = "http2.send_settings_frame"
+	ActionSendPushPromiseFrame  = "http2.send_push_promise_frame"
 	ActionSendPingFrame         = "http2.send_ping_frame"
 	ActionSendGoAwayFrame       = "http2.send_goaway_frame"
 	ActionSendWindowUpdateFrame = "http2.send_window_update_frame"
@@ -194,6 +195,24 @@ func (p *SendSettingsFrameParam) Validate() error {
 		if !ok {
 			return fmt.Errorf("invalid setting ID: %s", setting.ID)
 		}
+	}
+
+	return nil
+}
+
+type SendPushPromiseFrameParam struct {
+	StreamID         uint32  `json:"stream_id"`
+	EndHeaders       bool    `json:"end_headers"`
+	PadLength        uint8   `json:"pad_length"`
+	PromisedStreamID uint32  `json:"promised_stream_id"`
+	HeaderFields     []Field `json:"header_fields"`
+	NoDefaultFields  bool    `json:"no_default_fields"`
+	FillMaxFrameSize bool    `json:"fill_max_frame_size"`
+}
+
+func (p *SendPushPromiseFrameParam) Validate() error {
+	if len(p.HeaderFields) == 0 && p.NoDefaultFields && !p.FillMaxFrameSize {
+		return errors.New("'header_fields' must contain at least one field")
 	}
 
 	return nil
@@ -444,6 +463,8 @@ func (conn *Conn) Run(action string, param []byte) (interface{}, error) {
 		return conn.sendRSTStreamFrame(param)
 	case ActionSendSettingsFrame:
 		return conn.sendSettingsFrame(param)
+	case ActionSendPushPromiseFrame:
+		return conn.sendPushPromiseFrame(param)
 	case ActionSendPingFrame:
 		return conn.sendPingFrame(param)
 	case ActionSendGoAwayFrame:
@@ -743,6 +764,50 @@ func (conn *Conn) sendSettingsFrame(param []byte) (interface{}, error) {
 
 	defer conn.logWriteFrame()
 	return nil, conn.framer.WriteSettings(settings...)
+}
+
+func (conn *Conn) sendPushPromiseFrame(param []byte) (interface{}, error) {
+	var (
+		p      SendPushPromiseFrameParam
+		fields []Field
+	)
+
+	if err := json.Unmarshal(param, &p); err != nil {
+		return nil, err
+	}
+
+	if err := p.Validate(); err != nil {
+		return nil, err
+	}
+
+	if p.NoDefaultFields {
+		fields = p.HeaderFields
+	} else {
+		fields = conn.setDefaultHeaderFields(p.HeaderFields)
+	}
+
+	if p.FillMaxFrameSize {
+		num := int(conn.MaxFrameSize()/conn.maxFieldValueLength) + 1
+		for i := 0; i < num; i++ {
+			name := fmt.Sprintf("random-%d", i)
+			fields = append(fields, Field{
+				Name:  name,
+				Value: string(randomData(conn.maxFieldValueLength)),
+			})
+		}
+	}
+
+	ppp := http2.PushPromiseParam{
+		StreamID:      p.StreamID,
+		EndHeaders:    p.EndHeaders,
+		PadLength:     p.PadLength,
+		PromiseID:     p.PromisedStreamID,
+		BlockFragment: conn.encodeHeaderFields(fields),
+	}
+
+	defer conn.logWriteFrame()
+	return nil, conn.framer.WritePushPromise(ppp)
+
 }
 
 func (conn *Conn) sendPingFrame(param []byte) (interface{}, error) {

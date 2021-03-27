@@ -86,6 +86,7 @@ type Field struct {
 	Name      string `json:"name"`
 	Value     string `json:"value"`
 	Sensitive bool   `json:"sensitive"`
+	Omit      bool   `json:"omit"`
 }
 
 type Priority struct {
@@ -1209,7 +1210,15 @@ func (conn *Conn) encodeHeaderFields(fields []Field) []byte {
 	conn.encoderBuf.Reset()
 
 	for _, field := range fields {
-		conn.encoder.WriteField(hpack.HeaderField(field))
+		if field.Omit {
+			continue
+		}
+
+		conn.encoder.WriteField(hpack.HeaderField{
+			Name:      field.Name,
+			Value:     field.Value,
+			Sensitive: field.Sensitive,
+		})
 	}
 
 	buf := make([]byte, conn.encoderBuf.Len())

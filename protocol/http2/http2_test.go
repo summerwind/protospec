@@ -166,13 +166,13 @@ func TestSendHeadersFrameParam(t *testing.T) {
 		},
 		{
 			param: SendHeadersFrameParam{
-				StreamID:         1,
-				EndStream:        true,
-				EndHeaders:       true,
-				PadLength:        1,
-				HeaderFields:     []Field{},
-				NoDefaultFields:  true,
-				FillMaxFrameSize: false,
+				StreamID:          1,
+				EndStream:         true,
+				EndHeaders:        true,
+				PadLength:         1,
+				HeaderFields:      []Field{},
+				OmitDefaultFields: true,
+				FillMaxFrameSize:  false,
 				Priority: &Priority{
 					StreamDependency: 0,
 					Exclusive:        true,
@@ -835,11 +835,11 @@ func TestRunSendDataFrame(t *testing.T) {
 func TestRunSendHeadersFrame(t *testing.T) {
 	tests := []SendHeadersFrameParam{
 		{
-			StreamID:        3,
-			EndStream:       false,
-			EndHeaders:      false,
-			PadLength:       10,
-			NoDefaultFields: false,
+			StreamID:          3,
+			EndStream:         false,
+			EndHeaders:        false,
+			PadLength:         10,
+			OmitDefaultFields: false,
 			HeaderFields: []Field{
 				{
 					Name:  "test",
@@ -853,11 +853,11 @@ func TestRunSendHeadersFrame(t *testing.T) {
 			},
 		},
 		{
-			StreamID:        1,
-			EndStream:       true,
-			EndHeaders:      true,
-			PadLength:       0,
-			NoDefaultFields: true,
+			StreamID:          1,
+			EndStream:         true,
+			EndHeaders:        true,
+			PadLength:         0,
+			OmitDefaultFields: true,
 			HeaderFields: []Field{
 				{
 					Name:  "test",
@@ -947,7 +947,7 @@ func TestRunSendHeadersFrame(t *testing.T) {
 				})
 			})
 
-			if !param.NoDefaultFields {
+			if !param.OmitDefaultFields {
 				fields = conn.setDefaultHeaderFields(fields)
 			}
 
@@ -995,13 +995,13 @@ func TestRunSendHeadersFrame(t *testing.T) {
 		tests := []interface{}{
 			"invalid",
 			SendHeadersFrameParam{
-				StreamID:         1,
-				EndStream:        true,
-				EndHeaders:       true,
-				PadLength:        0,
-				NoDefaultFields:  true,
-				HeaderFields:     []Field{},
-				FillMaxFrameSize: false,
+				StreamID:          1,
+				EndStream:         true,
+				EndHeaders:        true,
+				PadLength:         0,
+				OmitDefaultFields: true,
+				HeaderFields:      []Field{},
+				FillMaxFrameSize:  false,
 			},
 		}
 

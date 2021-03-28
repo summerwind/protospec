@@ -157,18 +157,18 @@ func (p *SendDataFrameParam) Validate() error {
 }
 
 type SendHeadersFrameParam struct {
-	StreamID         uint32    `json:"stream_id"`
-	EndStream        bool      `json:"end_stream"`
-	EndHeaders       bool      `json:"end_headers"`
-	PadLength        uint8     `json:"pad_length"`
-	HeaderFields     []Field   `json:"header_fields"`
-	NoDefaultFields  bool      `json:"no_default_fields"`
-	FillMaxFrameSize bool      `json:"fill_max_frame_size"`
-	Priority         *Priority `json:"priority"`
+	StreamID          uint32    `json:"stream_id"`
+	EndStream         bool      `json:"end_stream"`
+	EndHeaders        bool      `json:"end_headers"`
+	PadLength         uint8     `json:"pad_length"`
+	HeaderFields      []Field   `json:"header_fields"`
+	OmitDefaultFields bool      `json:"omit_default_fields"`
+	FillMaxFrameSize  bool      `json:"fill_max_frame_size"`
+	Priority          *Priority `json:"priority"`
 }
 
 func (p *SendHeadersFrameParam) Validate() error {
-	if len(p.HeaderFields) == 0 && p.NoDefaultFields && !p.FillMaxFrameSize {
+	if len(p.HeaderFields) == 0 && p.OmitDefaultFields && !p.FillMaxFrameSize {
 		return errors.New("'header_fields' must contain at least one field")
 	}
 
@@ -215,17 +215,17 @@ func (p *SendSettingsFrameParam) Validate() error {
 }
 
 type SendPushPromiseFrameParam struct {
-	StreamID         uint32  `json:"stream_id"`
-	EndHeaders       bool    `json:"end_headers"`
-	PadLength        uint8   `json:"pad_length"`
-	PromisedStreamID uint32  `json:"promised_stream_id"`
-	HeaderFields     []Field `json:"header_fields"`
-	NoDefaultFields  bool    `json:"no_default_fields"`
-	FillMaxFrameSize bool    `json:"fill_max_frame_size"`
+	StreamID          uint32  `json:"stream_id"`
+	EndHeaders        bool    `json:"end_headers"`
+	PadLength         uint8   `json:"pad_length"`
+	PromisedStreamID  uint32  `json:"promised_stream_id"`
+	HeaderFields      []Field `json:"header_fields"`
+	OmitDefaultFields bool    `json:"omit_default_fields"`
+	FillMaxFrameSize  bool    `json:"fill_max_frame_size"`
 }
 
 func (p *SendPushPromiseFrameParam) Validate() error {
-	if len(p.HeaderFields) == 0 && p.NoDefaultFields && !p.FillMaxFrameSize {
+	if len(p.HeaderFields) == 0 && p.OmitDefaultFields && !p.FillMaxFrameSize {
 		return errors.New("'header_fields' must contain at least one field")
 	}
 
@@ -776,7 +776,7 @@ func (conn *Conn) sendDataFrame(p SendDataFrameParam) (interface{}, error) {
 func (conn *Conn) sendHeadersFrame(p SendHeadersFrameParam) (interface{}, error) {
 	var fields []Field
 
-	if p.NoDefaultFields {
+	if p.OmitDefaultFields {
 		fields = p.HeaderFields
 	} else {
 		fields = conn.setDefaultHeaderFields(p.HeaderFields)
@@ -850,7 +850,7 @@ func (conn *Conn) sendSettingsFrame(p SendSettingsFrameParam) (interface{}, erro
 func (conn *Conn) sendPushPromiseFrame(p SendPushPromiseFrameParam) (interface{}, error) {
 	var fields []Field
 
-	if p.NoDefaultFields {
+	if p.OmitDefaultFields {
 		fields = p.HeaderFields
 	} else {
 		fields = conn.setDefaultHeaderFields(p.HeaderFields)

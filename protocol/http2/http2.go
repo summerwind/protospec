@@ -100,6 +100,10 @@ type Priority struct {
 	Weight           uint8  `json:"weight"`
 }
 
+type Param interface {
+	Validate() error
+}
+
 type InitParam struct {
 	Handshake           bool      `json:"handshake"`
 	Settings            []Setting `json:"settings"`
@@ -453,11 +457,7 @@ func NewConn(transport net.Conn) (*Conn, error) {
 func (conn *Conn) Init(param []byte) error {
 	var p InitParam
 
-	if err := json.Unmarshal(param, &p); err != nil {
-		return err
-	}
-
-	if err := p.Validate(); err != nil {
+	if err := parseParam(param, &p); err != nil {
 		return err
 	}
 
@@ -477,49 +477,133 @@ func (conn *Conn) Init(param []byte) error {
 func (conn *Conn) Run(action string, param []byte) (interface{}, error) {
 	switch action {
 	case ActionSendData:
-		return conn.sendData(param)
+		var p SendDataParam
+		if err := parseParam(param, &p); err != nil {
+			return nil, err
+		}
+		return conn.sendData(p)
 	case ActionSendDataFrame:
-		return conn.sendDataFrame(param)
+		var p SendDataFrameParam
+		if err := parseParam(param, &p); err != nil {
+			return nil, err
+		}
+		return conn.sendDataFrame(p)
 	case ActionSendHeadersFrame:
-		return conn.sendHeadersFrame(param)
+		var p SendHeadersFrameParam
+		if err := parseParam(param, &p); err != nil {
+			return nil, err
+		}
+		return conn.sendHeadersFrame(p)
 	case ActionSendPriorityFrame:
-		return conn.sendPriorityFrame(param)
+		var p SendPriorityFrameParam
+		if err := parseParam(param, &p); err != nil {
+			return nil, err
+		}
+		return conn.sendPriorityFrame(p)
 	case ActionSendRSTStreamFrame:
-		return conn.sendRSTStreamFrame(param)
+		var p SendRSTStreamFrameParam
+		if err := parseParam(param, &p); err != nil {
+			return nil, err
+		}
+		return conn.sendRSTStreamFrame(p)
 	case ActionSendSettingsFrame:
-		return conn.sendSettingsFrame(param)
+		var p SendSettingsFrameParam
+		if err := parseParam(param, &p); err != nil {
+			return nil, err
+		}
+		return conn.sendSettingsFrame(p)
 	case ActionSendPushPromiseFrame:
-		return conn.sendPushPromiseFrame(param)
+		var p SendPushPromiseFrameParam
+		if err := parseParam(param, &p); err != nil {
+			return nil, err
+		}
+		return conn.sendPushPromiseFrame(p)
 	case ActionSendPingFrame:
-		return conn.sendPingFrame(param)
+		var p SendPingFrameParam
+		if err := parseParam(param, &p); err != nil {
+			return nil, err
+		}
+		return conn.sendPingFrame(p)
 	case ActionSendGoAwayFrame:
-		return conn.sendGoAwayFrame(param)
+		var p SendGoAwayFrameParam
+		if err := parseParam(param, &p); err != nil {
+			return nil, err
+		}
+		return conn.sendGoAwayFrame(p)
 	case ActionSendWindowUpdateFrame:
-		return conn.sendWindowUpdateFrame(param)
+		var p SendWindowUpdateFrameParam
+		if err := parseParam(param, &p); err != nil {
+			return nil, err
+		}
+		return conn.sendWindowUpdateFrame(p)
 	case ActionSendContinuationFrame:
-		return conn.sendContinuationFrame(param)
+		var p SendContinuationFrameParam
+		if err := parseParam(param, &p); err != nil {
+			return nil, err
+		}
+		return conn.sendContinuationFrame(p)
 	case ActionWaitDataFrame:
-		return conn.waitDataFrame(param)
+		var p WaitDataFrameParam
+		if err := parseParam(param, &p); err != nil {
+			return nil, err
+		}
+		return conn.waitDataFrame(p)
 	case ActionWaitHeadersFrame:
-		return conn.waitHeadersFrame(param)
+		var p WaitHeadersFrameParam
+		if err := parseParam(param, &p); err != nil {
+			return nil, err
+		}
+		return conn.waitHeadersFrame(p)
 	case ActionWaitRSTStreamFrame:
-		return conn.waitRSTStreamFrame(param)
+		var p WaitRSTStreamFrameParam
+		if err := parseParam(param, &p); err != nil {
+			return nil, err
+		}
+		return conn.waitRSTStreamFrame(p)
 	case ActionWaitSettingsFrame:
-		return conn.waitSettingsFrame(param)
+		var p WaitSettingsFrameParam
+		if err := parseParam(param, &p); err != nil {
+			return nil, err
+		}
+		return conn.waitSettingsFrame(p)
 	case ActionWaitPingFrame:
-		return conn.waitPingFrame(param)
+		var p WaitPingFrameParam
+		if err := parseParam(param, &p); err != nil {
+			return nil, err
+		}
+		return conn.waitPingFrame(p)
 	case ActionWaitGoAwayFrame:
-		return conn.waitGoAwayFrame(param)
+		var p WaitGoAwayFrameParam
+		if err := parseParam(param, &p); err != nil {
+			return nil, err
+		}
+		return conn.waitGoAwayFrame(p)
 	case ActionWaitConnectionError:
-		return conn.waitConnectionError(param)
+		var p WaitConnectionErrorParam
+		if err := parseParam(param, &p); err != nil {
+			return nil, err
+		}
+		return conn.waitConnectionError(p)
 	case ActionWaitConnectionClose:
-		return conn.waitConnectionClose(param)
+		return conn.waitConnectionClose()
 	case ActionWaitStreamError:
-		return conn.waitStreamError(param)
+		var p WaitStreamErrorParam
+		if err := parseParam(param, &p); err != nil {
+			return nil, err
+		}
+		return conn.waitStreamError(p)
 	case ActionWaitStreamClose:
-		return conn.waitStreamClose(param)
+		var p WaitStreamCloseParam
+		if err := parseParam(param, &p); err != nil {
+			return nil, err
+		}
+		return conn.waitStreamClose(p)
 	case ActionTestDataLength:
-		return conn.testDataLength(param)
+		var p TestDataLengthParam
+		if err := parseParam(param, &p); err != nil {
+			return nil, err
+		}
+		return conn.testDataLength(p)
 	default:
 		return nil, fmt.Errorf("invalid action: %s", action)
 	}
@@ -608,17 +692,7 @@ func (conn *Conn) handshake(settings []Setting) error {
 	return nil
 }
 
-func (conn *Conn) sendData(param []byte) (interface{}, error) {
-	var p SendDataParam
-
-	if err := json.Unmarshal(param, &p); err != nil {
-		return nil, err
-	}
-
-	if err := p.Validate(); err != nil {
-		return nil, err
-	}
-
+func (conn *Conn) sendData(p SendDataParam) (interface{}, error) {
 	for _, data := range p.Data {
 		var (
 			buf []byte
@@ -643,19 +717,8 @@ func (conn *Conn) sendData(param []byte) (interface{}, error) {
 	return nil, nil
 }
 
-func (conn *Conn) sendDataFrame(param []byte) (interface{}, error) {
-	var (
-		p    SendDataFrameParam
-		data []byte
-	)
-
-	if err := json.Unmarshal(param, &p); err != nil {
-		return nil, err
-	}
-
-	if err := p.Validate(); err != nil {
-		return nil, err
-	}
+func (conn *Conn) sendDataFrame(p SendDataFrameParam) (interface{}, error) {
+	var data []byte
 
 	if p.DataLength > 0 || p.FillMaxFrameSize {
 		dataLength := p.DataLength
@@ -679,19 +742,8 @@ func (conn *Conn) sendDataFrame(param []byte) (interface{}, error) {
 	}
 }
 
-func (conn *Conn) sendHeadersFrame(param []byte) (interface{}, error) {
-	var (
-		p      SendHeadersFrameParam
-		fields []Field
-	)
-
-	if err := json.Unmarshal(param, &p); err != nil {
-		return nil, err
-	}
-
-	if err := p.Validate(); err != nil {
-		return nil, err
-	}
+func (conn *Conn) sendHeadersFrame(p SendHeadersFrameParam) (interface{}, error) {
+	var fields []Field
 
 	if p.NoDefaultFields {
 		fields = p.HeaderFields
@@ -730,17 +782,7 @@ func (conn *Conn) sendHeadersFrame(param []byte) (interface{}, error) {
 	return nil, conn.framer.WriteHeaders(hp)
 }
 
-func (conn *Conn) sendPriorityFrame(param []byte) (interface{}, error) {
-	var p SendPriorityFrameParam
-
-	if err := json.Unmarshal(param, &p); err != nil {
-		return nil, err
-	}
-
-	if err := p.Validate(); err != nil {
-		return nil, err
-	}
-
+func (conn *Conn) sendPriorityFrame(p SendPriorityFrameParam) (interface{}, error) {
 	pp := http2.PriorityParam{
 		StreamDep: p.StreamDependency,
 		Exclusive: p.Exclusive,
@@ -751,34 +793,13 @@ func (conn *Conn) sendPriorityFrame(param []byte) (interface{}, error) {
 	return nil, conn.framer.WritePriority(p.StreamID, pp)
 }
 
-func (conn *Conn) sendRSTStreamFrame(param []byte) (interface{}, error) {
-	var p SendRSTStreamFrameParam
-
-	if err := json.Unmarshal(param, &p); err != nil {
-		return nil, err
-	}
-
-	if err := p.Validate(); err != nil {
-		return nil, err
-	}
-
+func (conn *Conn) sendRSTStreamFrame(p SendRSTStreamFrameParam) (interface{}, error) {
 	defer conn.logWriteFrame()
 	return nil, conn.framer.WriteRSTStream(p.StreamID, errorCode[p.ErrorCode])
 }
 
-func (conn *Conn) sendSettingsFrame(param []byte) (interface{}, error) {
-	var (
-		p        SendSettingsFrameParam
-		settings []http2.Setting
-	)
-
-	if err := json.Unmarshal(param, &p); err != nil {
-		return nil, err
-	}
-
-	if err := p.Validate(); err != nil {
-		return nil, err
-	}
+func (conn *Conn) sendSettingsFrame(p SendSettingsFrameParam) (interface{}, error) {
+	var settings []http2.Setting
 
 	if p.Ack {
 		return nil, conn.framer.WriteSettingsAck()
@@ -795,19 +816,8 @@ func (conn *Conn) sendSettingsFrame(param []byte) (interface{}, error) {
 	return nil, conn.framer.WriteSettings(settings...)
 }
 
-func (conn *Conn) sendPushPromiseFrame(param []byte) (interface{}, error) {
-	var (
-		p      SendPushPromiseFrameParam
-		fields []Field
-	)
-
-	if err := json.Unmarshal(param, &p); err != nil {
-		return nil, err
-	}
-
-	if err := p.Validate(); err != nil {
-		return nil, err
-	}
+func (conn *Conn) sendPushPromiseFrame(p SendPushPromiseFrameParam) (interface{}, error) {
+	var fields []Field
 
 	if p.NoDefaultFields {
 		fields = p.HeaderFields
@@ -836,22 +846,10 @@ func (conn *Conn) sendPushPromiseFrame(param []byte) (interface{}, error) {
 
 	defer conn.logWriteFrame()
 	return nil, conn.framer.WritePushPromise(ppp)
-
 }
 
-func (conn *Conn) sendPingFrame(param []byte) (interface{}, error) {
-	var (
-		p    SendPingFrameParam
-		data [8]byte
-	)
-
-	if err := json.Unmarshal(param, &p); err != nil {
-		return nil, err
-	}
-
-	if err := p.Validate(); err != nil {
-		return nil, err
-	}
+func (conn *Conn) sendPingFrame(p SendPingFrameParam) (interface{}, error) {
+	var data [8]byte
 
 	copy(data[:], p.Data)
 
@@ -859,62 +857,22 @@ func (conn *Conn) sendPingFrame(param []byte) (interface{}, error) {
 	return nil, conn.framer.WritePing(p.Ack, data)
 }
 
-func (conn *Conn) sendGoAwayFrame(param []byte) (interface{}, error) {
-	var p SendGoAwayFrameParam
-
-	if err := json.Unmarshal(param, &p); err != nil {
-		return nil, err
-	}
-
-	if err := p.Validate(); err != nil {
-		return nil, err
-	}
-
+func (conn *Conn) sendGoAwayFrame(p SendGoAwayFrameParam) (interface{}, error) {
 	defer conn.logWriteFrame()
 	return nil, conn.framer.WriteGoAway(p.LastStreamID, errorCode[p.ErrorCode], []byte(p.AdditionalDebugData))
 }
 
-func (conn *Conn) sendWindowUpdateFrame(param []byte) (interface{}, error) {
-	var p SendWindowUpdateFrameParam
-
-	if err := json.Unmarshal(param, &p); err != nil {
-		return nil, err
-	}
-
-	if err := p.Validate(); err != nil {
-		return nil, err
-	}
-
+func (conn *Conn) sendWindowUpdateFrame(p SendWindowUpdateFrameParam) (interface{}, error) {
 	defer conn.logWriteFrame()
 	return nil, conn.framer.WriteWindowUpdate(p.StreamID, p.WindowSizeIncrement)
 }
 
-func (conn *Conn) sendContinuationFrame(param []byte) (interface{}, error) {
-	var p SendContinuationFrameParam
-
-	if err := json.Unmarshal(param, &p); err != nil {
-		return nil, err
-	}
-
-	if err := p.Validate(); err != nil {
-		return nil, err
-	}
-
+func (conn *Conn) sendContinuationFrame(p SendContinuationFrameParam) (interface{}, error) {
 	defer conn.logWriteFrame()
 	return nil, conn.framer.WriteContinuation(p.StreamID, p.EndHeaders, conn.encodeHeaderFields(p.HeaderFields))
 }
 
-func (conn *Conn) waitDataFrame(param []byte) (interface{}, error) {
-	var p WaitDataFrameParam
-
-	if err := json.Unmarshal(param, &p); err != nil {
-		return nil, err
-	}
-
-	if err := p.Validate(); err != nil {
-		return nil, err
-	}
-
+func (conn *Conn) waitDataFrame(p WaitDataFrameParam) (interface{}, error) {
 	for {
 		f, err := conn.readFrame()
 		if err != nil {
@@ -950,17 +908,7 @@ func (conn *Conn) waitDataFrame(param []byte) (interface{}, error) {
 	}
 }
 
-func (conn *Conn) waitHeadersFrame(param []byte) (interface{}, error) {
-	var p WaitHeadersFrameParam
-
-	if err := json.Unmarshal(param, &p); err != nil {
-		return nil, err
-	}
-
-	if err := p.Validate(); err != nil {
-		return nil, err
-	}
-
+func (conn *Conn) waitHeadersFrame(p WaitHeadersFrameParam) (interface{}, error) {
 	for {
 		f, err := conn.readFrame()
 		if err != nil {
@@ -984,17 +932,7 @@ func (conn *Conn) waitHeadersFrame(param []byte) (interface{}, error) {
 	}
 }
 
-func (conn *Conn) waitRSTStreamFrame(param []byte) (interface{}, error) {
-	var p WaitRSTStreamFrameParam
-
-	if err := json.Unmarshal(param, &p); err != nil {
-		return nil, err
-	}
-
-	if err := p.Validate(); err != nil {
-		return nil, err
-	}
-
+func (conn *Conn) waitRSTStreamFrame(p WaitRSTStreamFrameParam) (interface{}, error) {
 	for {
 		f, err := conn.readFrame()
 		if err != nil {
@@ -1027,17 +965,7 @@ func (conn *Conn) waitRSTStreamFrame(param []byte) (interface{}, error) {
 	}
 }
 
-func (conn *Conn) waitSettingsFrame(param []byte) (interface{}, error) {
-	var p WaitSettingsFrameParam
-
-	if err := json.Unmarshal(param, &p); err != nil {
-		return nil, err
-	}
-
-	if err := p.Validate(); err != nil {
-		return nil, err
-	}
-
+func (conn *Conn) waitSettingsFrame(p WaitSettingsFrameParam) (interface{}, error) {
 	for {
 		f, err := conn.readFrame()
 		if err != nil {
@@ -1087,17 +1015,7 @@ func (conn *Conn) waitSettingsFrame(param []byte) (interface{}, error) {
 	}
 }
 
-func (conn *Conn) waitPingFrame(param []byte) (interface{}, error) {
-	var p WaitPingFrameParam
-
-	if err := json.Unmarshal(param, &p); err != nil {
-		return nil, err
-	}
-
-	if err := p.Validate(); err != nil {
-		return nil, err
-	}
-
+func (conn *Conn) waitPingFrame(p WaitPingFrameParam) (interface{}, error) {
 	for {
 		var valid = false
 
@@ -1130,17 +1048,7 @@ func (conn *Conn) waitPingFrame(param []byte) (interface{}, error) {
 	}
 }
 
-func (conn *Conn) waitGoAwayFrame(param []byte) (interface{}, error) {
-	var p WaitGoAwayFrameParam
-
-	if err := json.Unmarshal(param, &p); err != nil {
-		return nil, err
-	}
-
-	if err := p.Validate(); err != nil {
-		return nil, err
-	}
-
+func (conn *Conn) waitGoAwayFrame(p WaitGoAwayFrameParam) (interface{}, error) {
 	for {
 		f, err := conn.readFrame()
 		if err != nil {
@@ -1177,17 +1085,7 @@ func (conn *Conn) waitGoAwayFrame(param []byte) (interface{}, error) {
 	}
 }
 
-func (conn *Conn) waitConnectionError(param []byte) (interface{}, error) {
-	var p WaitConnectionErrorParam
-
-	if err := json.Unmarshal(param, &p); err != nil {
-		return nil, err
-	}
-
-	if err := p.Validate(); err != nil {
-		return nil, err
-	}
-
+func (conn *Conn) waitConnectionError(p WaitConnectionErrorParam) (interface{}, error) {
 	for {
 		f, err := conn.readFrame()
 		if err != nil {
@@ -1223,7 +1121,7 @@ func (conn *Conn) waitConnectionError(param []byte) (interface{}, error) {
 	}
 }
 
-func (conn *Conn) waitConnectionClose(param []byte) (interface{}, error) {
+func (conn *Conn) waitConnectionClose() (interface{}, error) {
 	for {
 		_, err := conn.readFrame()
 		if err != nil {
@@ -1240,17 +1138,7 @@ func (conn *Conn) waitConnectionClose(param []byte) (interface{}, error) {
 	}
 }
 
-func (conn *Conn) waitStreamError(param []byte) (interface{}, error) {
-	var p WaitStreamErrorParam
-
-	if err := json.Unmarshal(param, &p); err != nil {
-		return nil, err
-	}
-
-	if err := p.Validate(); err != nil {
-		return nil, err
-	}
-
+func (conn *Conn) waitStreamError(p WaitStreamErrorParam) (interface{}, error) {
 	for {
 		var errCode http2.ErrCode
 
@@ -1296,17 +1184,7 @@ func (conn *Conn) waitStreamError(param []byte) (interface{}, error) {
 	}
 }
 
-func (conn *Conn) waitStreamClose(param []byte) (interface{}, error) {
-	var p WaitStreamCloseParam
-
-	if err := json.Unmarshal(param, &p); err != nil {
-		return nil, err
-	}
-
-	if err := p.Validate(); err != nil {
-		return nil, err
-	}
-
+func (conn *Conn) waitStreamClose(p WaitStreamCloseParam) (interface{}, error) {
 	for {
 		f, err := conn.readFrame()
 		if err != nil {
@@ -1346,20 +1224,11 @@ func (conn *Conn) waitStreamClose(param []byte) (interface{}, error) {
 	}
 }
 
-func (conn *Conn) testDataLength(param []byte) (interface{}, error) {
+func (conn *Conn) testDataLength(p TestDataLengthParam) (interface{}, error) {
 	var (
-		p       TestDataLengthParam
 		dataLen uint32
 		ended   bool
 	)
-
-	if err := json.Unmarshal(param, &p); err != nil {
-		return nil, err
-	}
-
-	if err := p.Validate(); err != nil {
-		return nil, err
-	}
 
 	hfp := http2.HeadersFrameParam{
 		StreamID:      p.StreamID,
@@ -1468,6 +1337,18 @@ func (conn *Conn) logWriteFrame() {
 	if f != nil {
 		logWrite(getEvent(f))
 	}
+}
+
+func parseParam(data []byte, p Param) error {
+	if err := json.Unmarshal(data, p); err != nil {
+		return err
+	}
+
+	if err := p.Validate(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func randomData(l uint32) []byte {

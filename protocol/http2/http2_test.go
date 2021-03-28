@@ -941,7 +941,10 @@ func TestRunSendHeadersFrame(t *testing.T) {
 
 			var fields []Field
 			decoder := hpack.NewDecoder(4096, func(f hpack.HeaderField) {
-				fields = append(fields, Field(f))
+				fields = append(fields, Field{
+					Name:  f.Name,
+					Value: f.Value,
+				})
 			})
 
 			if !param.NoDefaultFields {
@@ -1585,7 +1588,10 @@ func TestRunSendContinurationFrame(t *testing.T) {
 
 		var fields []Field
 		decoder := hpack.NewDecoder(4096, func(f hpack.HeaderField) {
-			fields = append(fields, Field(f))
+			fields = append(fields, Field{
+				Name:  f.Name,
+				Value: f.Value,
+			})
 		})
 
 		_, err = decoder.Write(cf.HeaderBlockFragment())

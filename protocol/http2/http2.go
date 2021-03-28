@@ -35,6 +35,7 @@ const (
 	ActionSendGoAwayFrame       = "http2.send_goaway_frame"
 	ActionSendWindowUpdateFrame = "http2.send_window_update_frame"
 	ActionSendContinuationFrame = "http2.send_continuation_frame"
+	ActionSendStream            = "http2.send_stream"
 
 	ActionWaitDataFrame       = "http2.wait_data_frame"
 	ActionWaitHeadersFrame    = "http2.wait_headers_frame"
@@ -98,6 +99,11 @@ type Priority struct {
 	StreamDependency uint32 `json:"stream_dependency"`
 	Exclusive        bool   `json:"exclusive"`
 	Weight           uint8  `json:"weight"`
+}
+
+type StreamFrame struct {
+	Action string          `json:"action"`
+	Param  json.RawMessage `json:"param"`
 }
 
 type Param interface {
@@ -268,6 +274,25 @@ type SendContinuationFrameParam struct {
 func (p *SendContinuationFrameParam) Validate() error {
 	if len(p.HeaderFields) == 0 {
 		return errors.New("'header_fields' must contain at least one field")
+	}
+
+	return nil
+}
+
+type SendStreamParam struct {
+	InitialStreamID      uint32        `json:"initial_stream_id"`
+	ConcurrentStreams    uint32        `json:"concurrent_streams"`
+	MaxConcurrentStreams bool          `json:"max_concurrent_streams"`
+	Frames               []StreamFrame `json:"frames"`
+}
+
+func (p *SendStreamParam) Validate() error {
+	if len(p.Frames) == 0 {
+		return errors.New("'frames' must contain at least one action")
+	}
+
+	if p.ConcurrentStreams > 0 && p.MaxConcurrentStreams {
+		return errors.New("'concurrent_streams' and `max_concurrent_streams` cannot be specified at the same time")
 	}
 
 	return nil
@@ -542,6 +567,12 @@ func (conn *Conn) Run(action string, param []byte) (interface{}, error) {
 			return nil, err
 		}
 		return conn.sendContinuationFrame(p)
+	case ActionSendStream:
+		var p SendStreamParam
+		if err := parseParam(param, &p); err != nil {
+			return nil, err
+		}
+		return conn.sendStream(p)
 	case ActionWaitDataFrame:
 		var p WaitDataFrameParam
 		if err := parseParam(param, &p); err != nil {
@@ -870,6 +901,99 @@ func (conn *Conn) sendWindowUpdateFrame(p SendWindowUpdateFrameParam) (interface
 func (conn *Conn) sendContinuationFrame(p SendContinuationFrameParam) (interface{}, error) {
 	defer conn.logWriteFrame()
 	return nil, conn.framer.WriteContinuation(p.StreamID, p.EndHeaders, conn.encodeHeaderFields(p.HeaderFields))
+}
+
+func (conn *Conn) sendStream(p SendStreamParam) (interface{}, error) {
+	num := int(p.ConcurrentStreams)
+
+	if p.MaxConcurrentStreams {
+		mcs, ok := conn.settings[http2.SettingMaxConcurrentStreams]
+		if !ok {
+			return nil, action.Skip("the number of concurrent streams is set to unlimited")
+		}
+		num = int(mcs)
+	}
+
+	for _, frame := range p.Frames {
+		switch frame.Action {
+		case ActionSendDataFrame:
+			var fp SendDataFrameParam
+			if err := parseParam(frame.Param, &fp); err != nil {
+				return nil, err
+			}
+
+			for i := 0; i < num; i++ {
+				fp.StreamID = p.InitialStreamID + uint32(i)*2
+				if _, err := conn.sendDataFrame(fp); err != nil {
+					return nil, err
+				}
+			}
+		case ActionSendHeadersFrame:
+			var fp SendHeadersFrameParam
+			if err := parseParam(frame.Param, &fp); err != nil {
+				return nil, err
+			}
+
+			for i := 0; i < num; i++ {
+				fp.StreamID = p.InitialStreamID + uint32(i)*2
+				if _, err := conn.sendHeadersFrame(fp); err != nil {
+					return nil, err
+				}
+			}
+		case ActionSendPriorityFrame:
+			var fp SendPriorityFrameParam
+			if err := parseParam(frame.Param, &fp); err != nil {
+				return nil, err
+			}
+
+			for i := 0; i < num; i++ {
+				fp.StreamID = p.InitialStreamID + uint32(i)*2
+				if _, err := conn.sendPriorityFrame(fp); err != nil {
+					return nil, err
+				}
+			}
+		case ActionSendRSTStreamFrame:
+			var fp SendRSTStreamFrameParam
+			if err := parseParam(frame.Param, &fp); err != nil {
+				return nil, err
+			}
+
+			for i := 0; i < num; i++ {
+				fp.StreamID = p.InitialStreamID + uint32(i)*2
+				if _, err := conn.sendRSTStreamFrame(fp); err != nil {
+					return nil, err
+				}
+			}
+		case ActionSendWindowUpdateFrame:
+			var fp SendWindowUpdateFrameParam
+			if err := parseParam(frame.Param, &fp); err != nil {
+				return nil, err
+			}
+
+			for i := 0; i < num; i++ {
+				fp.StreamID = p.InitialStreamID + uint32(i)*2
+				if _, err := conn.sendWindowUpdateFrame(fp); err != nil {
+					return nil, err
+				}
+			}
+		case ActionSendContinuationFrame:
+			var fp SendContinuationFrameParam
+			if err := parseParam(frame.Param, &fp); err != nil {
+				return nil, err
+			}
+
+			for i := 0; i < num; i++ {
+				fp.StreamID = p.InitialStreamID + uint32(i)*2
+				if _, err := conn.sendContinuationFrame(fp); err != nil {
+					return nil, err
+				}
+			}
+		default:
+			return nil, fmt.Errorf("unsupported action in send_stream action: %s", frame.Action)
+		}
+	}
+
+	return nil, nil
 }
 
 func (conn *Conn) waitDataFrame(p WaitDataFrameParam) (interface{}, error) {

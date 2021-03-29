@@ -282,6 +282,43 @@ func TestSendSettingsFrameParam(t *testing.T) {
 	}
 }
 
+func TestSendGoAwayFrameParam(t *testing.T) {
+	tests := []struct {
+		param SendGoAwayFrameParam
+		err   bool
+	}{
+		{
+			param: SendGoAwayFrameParam{
+				LastStreamID:        3,
+				ErrorCode:           "NO_ERROR",
+				AdditionalDebugData: "protospec",
+			},
+			err: false,
+		},
+		{
+			param: SendGoAwayFrameParam{
+				LastStreamID:        3,
+				ErrorCode:           "INVALID_ERROR",
+				AdditionalDebugData: "protospec",
+			},
+			err: true,
+		},
+	}
+
+	for i, test := range tests {
+		err := test.param.Validate()
+		if test.err {
+			if err == nil {
+				t.Errorf("[%d] unexpected nil error", i)
+			}
+		} else {
+			if err != nil {
+				t.Errorf("[%d] unexpected error: %v", i, err)
+			}
+		}
+	}
+}
+
 func TestSendPingFrameParam(t *testing.T) {
 	p := SendPingFrameParam{
 		Ack:  false,
@@ -1461,6 +1498,101 @@ func TestRunSendPingFrame(t *testing.T) {
 		}
 		if res != nil {
 			t.Errorf("unexpected result: %v", res)
+		}
+	})
+}
+
+func TestRunSendGoAwayFrame(t *testing.T) {
+	param := SendGoAwayFrameParam{
+		LastStreamID:        3,
+		ErrorCode:           "NO_ERROR",
+		AdditionalDebugData: "protospec",
+	}
+
+	conn, server := newTestConn(t)
+	ch := make(chan error, 1)
+
+	go func() {
+		framer := http2.NewFramer(server, server)
+		framer.AllowIllegalWrites = true
+		framer.AllowIllegalReads = true
+
+		f, err := framer.ReadFrame()
+		if err != nil {
+			ch <- err
+			return
+		}
+
+		gaf, ok := f.(*http2.GoAwayFrame)
+		if !ok {
+			ch <- fmt.Errorf("unexpected frame: %s", f)
+			return
+		}
+
+		if gaf.LastStreamID != param.LastStreamID {
+			ch <- fmt.Errorf("unexpected last stream ID: %v", gaf.LastStreamID)
+			return
+		}
+
+		if gaf.ErrCode != errorCode[param.ErrorCode] {
+			ch <- fmt.Errorf("unexpected error code: %v", gaf.ErrCode)
+			return
+		}
+
+		if string(gaf.DebugData()) != param.AdditionalDebugData {
+			ch <- fmt.Errorf("unexpected additional debug data: %s", gaf.DebugData())
+			return
+		}
+
+		close(ch)
+	}()
+
+	buf, err := json.Marshal(param)
+	if err != nil {
+		t.Errorf("marshal error: %v", err)
+	}
+
+	res, err := conn.Run(ActionSendGoAwayFrame, buf)
+	if err != nil {
+		t.Errorf("run error: %v", err)
+	}
+	if res != nil {
+		t.Errorf("unexpected result: %v", res)
+	}
+
+	if err := conn.Close(); err != nil {
+		t.Errorf("close error: %v", err)
+	}
+
+	if err = <-ch; err != nil {
+		t.Errorf("server error: %v", err)
+	}
+
+	t.Run("invalid param", func(t *testing.T) {
+		tests := []interface{}{
+			"invalid",
+			SendGoAwayFrameParam{
+				LastStreamID:        3,
+				ErrorCode:           "INVALID_ERROR",
+				AdditionalDebugData: "protospec",
+			},
+		}
+
+		for i, param := range tests {
+			conn, _ := newTestConn(t)
+
+			buf, err := json.Marshal(param)
+			if err != nil {
+				t.Errorf("[%d] marshal error: %v", i, err)
+			}
+
+			res, err := conn.Run(ActionSendGoAwayFrame, buf)
+			if err == nil {
+				t.Errorf("[%d] unexpected nil error", i)
+			}
+			if res != nil {
+				t.Errorf("[%d] unexpected result: %v", i, res)
+			}
 		}
 	})
 }

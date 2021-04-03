@@ -68,12 +68,12 @@ func (r *Runner) Run() error {
 		targetTests[test] = true
 	}
 
-	specs, err := spec.Load(r.config.SpecPath)
+	bundle, err := spec.Load(r.config.SpecPath)
 	if err != nil {
 		return err
 	}
 
-	for _, spec := range specs {
+	for _, spec := range bundle.Specs {
 		if _, ok := targetSpecs[spec.ID]; target && !ok {
 			continue
 		}

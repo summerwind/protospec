@@ -15,10 +15,26 @@ const (
 	TransportUDP = "udp"
 )
 
+type Manifest struct {
+	ID            string   `json:"id"`
+	Name          string   `json:"name"`
+	Ref           string   `json:"ref,omitempty"`
+	SenderSpecs   []string `json:"sender_specs"`
+	ReceiverSpecs []string `json:"receiver_specs"`
+}
+
+type Bundle struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Ref   string `json:"ref,omitempty"`
+	Specs []Spec `json:"specs"`
+}
+
 type Spec struct {
 	ID    string `json:"id"`
 	Name  string `json:"name"`
 	Ref   string `json:"ref,omitempty"`
+	Path  string `json:"-"`
 	Tests []Test `json:"tests"`
 }
 
@@ -47,34 +63,75 @@ type TestRule struct {
 	Path string `json:"path"`
 }
 
-func Load(dir string) ([]Spec, error) {
-	var specs []Spec
+func Load(p string) (*Bundle, error) {
+	stat, err := os.Stat(p)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read: %s - %w", p, err)
+	}
 
-	err := filepath.Walk(dir, func(p string, info os.FileInfo, err error) error {
-		if info.IsDir() {
-			return nil
+	if stat.IsDir() {
+		var found bool
+
+		manifestPath := []string{
+			filepath.Join(p, "manifest.yaml"),
+			filepath.Join(p, "manifest.yml"),
 		}
 
-		ext := filepath.Ext(p)
-		if ext != ".yml" && ext != ".yaml" {
-			return nil
+		for _, mp := range manifestPath {
+			stat, err := os.Stat(mp)
+			if err != nil {
+				if os.IsNotExist(err) {
+					continue
+				}
+				return nil, fmt.Errorf("failed to read: %s - %w", mp, err)
+			}
+
+			if !stat.IsDir() {
+				p = mp
+				found = true
+				break
+			}
 		}
 
-		buf, err := ioutil.ReadFile(p)
+		if !found {
+			return nil, fmt.Errorf("no manifest file found in %s", p)
+		}
+	}
+
+	buf, err := ioutil.ReadFile(p)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read manifest file: %s - %w", p, err)
+	}
+
+	var manifest Manifest
+	err = yaml.Unmarshal(buf, &manifest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse manifest: %s - %w", p, err)
+	}
+
+	bundle := Bundle{
+		ID:   manifest.ID,
+		Name: manifest.Name,
+		Ref:  manifest.Ref,
+	}
+
+	for _, sp := range manifest.SenderSpecs {
+		specPath := filepath.Join(filepath.Dir(p), sp)
+
+		buf, err := ioutil.ReadFile(specPath)
 		if err != nil {
-			return fmt.Errorf("failed to read file: %s - %w", p, err)
+			return nil, fmt.Errorf("failed to read file: %s - %w", sp, err)
 		}
 
 		var spec Spec
 		err = yaml.Unmarshal(buf, &spec)
 		if err != nil {
-			return fmt.Errorf("failed to parse spec: %s - %w", p, err)
+			return nil, fmt.Errorf("failed to parse spec: %s - %w", sp, err)
 		}
 
-		specs = append(specs, spec)
+		spec.Path = specPath
+		bundle.Specs = append(bundle.Specs, spec)
+	}
 
-		return nil
-	})
-
-	return specs, err
+	return &bundle, nil
 }

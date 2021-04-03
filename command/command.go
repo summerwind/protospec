@@ -6,15 +6,15 @@ import (
 )
 
 const (
-	bundleConfigMediaType    = "application/vnd.protospec.config.v1+json"
-	bundleTestLayerMediaType = "application/vnd.protospec.test.layer.v1+yaml"
-	bundleRuleLayerMediaType = "application/vnd.protospec.rule.layer.v1+rego"
+	bundleConfigMediaType        = "application/vnd.protospec.config.v1+json"
+	bundleManifestLayerMediaType = "application/vnd.protospec.manifest.layer.v1+yaml"
+	bundleSpecLayerMediaType     = "application/vnd.protospec.spec.layer.v1+yaml"
 )
 
 var bundleMediaTypes = []string{
 	bundleConfigMediaType,
-	bundleTestLayerMediaType,
-	bundleRuleLayerMediaType,
+	bundleManifestLayerMediaType,
+	bundleSpecLayerMediaType,
 }
 
 func validateBundleName(name string) error {

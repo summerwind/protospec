@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/deislabs/oras/pkg/auth/docker"
 	"github.com/deislabs/oras/pkg/content"
@@ -14,6 +14,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/summerwind/protospec/spec"
 )
 
 func NewPushCommand() *cobra.Command {
@@ -39,22 +40,12 @@ func push(bundleName, bundlePath string) error {
 	if err := validateBundleName(bundleName); err != nil {
 		return err
 	}
-
 	bundleName = normalizeBundleName(bundleName)
 
-	tests, rules, err := loadBundleFiles(bundlePath)
-	if err != nil {
-		return fmt.Errorf("failed to load spec files: %w", err)
-	}
-
 	store := content.NewMemoryStore()
-
-	var layers []ocispec.Descriptor
-	for path, contents := range tests {
-		layers = append(layers, store.Add(path, bundleTestLayerMediaType, contents))
-	}
-	for path, contents := range rules {
-		layers = append(layers, store.Add(path, bundleRuleLayerMediaType, contents))
+	layers, err := loadBundleFiles(store, bundlePath)
+	if err != nil {
+		return err
 	}
 
 	ctx := context.Background()
@@ -85,48 +76,42 @@ func push(bundleName, bundlePath string) error {
 	return nil
 }
 
-func loadBundleFiles(dir string) (map[string][]byte, map[string][]byte, error) {
-	tests := map[string][]byte{}
-	rules := map[string][]byte{}
+func loadBundleFiles(store *content.Memorystore, p string) ([]ocispec.Descriptor, error) {
+	var layers []ocispec.Descriptor
 
-	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		var fileType string
+	bundle, err := spec.Load(p)
+	if err != nil {
+		return nil, err
+	}
 
-		if info.IsDir() {
-			return nil
+	bundlePath := filepath.Dir(bundle.Manifest.Path)
+
+	rp, err := filepath.Rel(bundlePath, bundle.Manifest.Path)
+	if err != nil {
+		return nil, err
+	}
+
+	content, err := ioutil.ReadFile(bundle.Manifest.Path)
+	if err != nil {
+		return nil, err
+	}
+
+	layers = append(layers, store.Add(rp, bundleManifestLayerMediaType, content))
+
+	for _, sp := range bundle.Manifest.SenderSpecs {
+		specPath := filepath.Join(bundlePath, sp)
+
+		if !strings.HasPrefix(specPath, bundlePath) {
+			return nil, fmt.Errorf("the spec file is located outside the bundle directory: %s", specPath)
 		}
 
-		switch filepath.Ext(path) {
-		case ".yml":
-			fileType = "test"
-		case ".yaml":
-			fileType = "test"
-		case ".rego":
-			fileType = "rule"
-		}
-
-		if fileType == "" {
-			return nil
-		}
-
-		relPath, err := filepath.Rel(dir, path)
+		content, err := ioutil.ReadFile(filepath.Join(bundlePath, sp))
 		if err != nil {
-			return err
+			return nil, err
 		}
 
-		content, err := ioutil.ReadFile(path)
-		if err != nil {
-			return err
-		}
+		layers = append(layers, store.Add(sp, bundleSpecLayerMediaType, content))
+	}
 
-		if fileType == "test" {
-			tests[relPath] = content
-		} else {
-			rules[relPath] = content
-		}
-
-		return nil
-	})
-
-	return tests, rules, err
+	return layers, nil
 }

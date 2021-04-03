@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/ghodss/yaml"
 )
@@ -15,19 +16,18 @@ const (
 	TransportUDP = "udp"
 )
 
+type Bundle struct {
+	Manifest *Manifest
+	Specs    []Spec
+}
+
 type Manifest struct {
 	ID            string   `json:"id"`
 	Name          string   `json:"name"`
 	Ref           string   `json:"ref,omitempty"`
+	Path          string   `json:"-"`
 	SenderSpecs   []string `json:"sender_specs"`
 	ReceiverSpecs []string `json:"receiver_specs"`
-}
-
-type Bundle struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Ref   string `json:"ref,omitempty"`
-	Specs []Spec `json:"specs"`
 }
 
 type Spec struct {
@@ -64,6 +64,42 @@ type TestRule struct {
 }
 
 func Load(p string) (*Bundle, error) {
+	manifest, err := LoadManifest(p)
+	if err != nil {
+		return nil, err
+	}
+
+	bundle := Bundle{
+		Manifest: manifest,
+	}
+
+	bundlePath := filepath.Dir(manifest.Path)
+	for _, sp := range manifest.SenderSpecs {
+		specPath := filepath.Join(bundlePath, sp)
+
+		if !strings.HasPrefix(specPath, bundlePath) {
+			return nil, fmt.Errorf("the spec file is located outside the bundle directory: %s", specPath)
+		}
+
+		buf, err := ioutil.ReadFile(specPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read file: %s - %w", sp, err)
+		}
+
+		var spec Spec
+		err = yaml.Unmarshal(buf, &spec)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse spec: %s - %w", sp, err)
+		}
+
+		spec.Path = specPath
+		bundle.Specs = append(bundle.Specs, spec)
+	}
+
+	return &bundle, nil
+}
+
+func LoadManifest(p string) (*Manifest, error) {
 	stat, err := os.Stat(p)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read: %s - %w", p, err)
@@ -109,29 +145,6 @@ func Load(p string) (*Bundle, error) {
 		return nil, fmt.Errorf("failed to parse manifest: %s - %w", p, err)
 	}
 
-	bundle := Bundle{
-		ID:   manifest.ID,
-		Name: manifest.Name,
-		Ref:  manifest.Ref,
-	}
-
-	for _, sp := range manifest.SenderSpecs {
-		specPath := filepath.Join(filepath.Dir(p), sp)
-
-		buf, err := ioutil.ReadFile(specPath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read file: %s - %w", sp, err)
-		}
-
-		var spec Spec
-		err = yaml.Unmarshal(buf, &spec)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse spec: %s - %w", sp, err)
-		}
-
-		spec.Path = specPath
-		bundle.Specs = append(bundle.Specs, spec)
-	}
-
-	return &bundle, nil
+	manifest.Path = p
+	return &manifest, nil
 }

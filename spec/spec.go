@@ -22,6 +22,7 @@ type Bundle struct {
 }
 
 type Manifest struct {
+	Version       string   `json:"version"`
 	ID            string   `json:"id"`
 	Name          string   `json:"name"`
 	Ref           string   `json:"ref,omitempty"`
@@ -31,11 +32,12 @@ type Manifest struct {
 }
 
 type Spec struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Ref   string `json:"ref,omitempty"`
-	Path  string `json:"-"`
-	Tests []Test `json:"tests"`
+	Version string `json:"version"`
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Ref     string `json:"ref,omitempty"`
+	Path    string `json:"-"`
+	Tests   []Test `json:"tests"`
 }
 
 type Test struct {

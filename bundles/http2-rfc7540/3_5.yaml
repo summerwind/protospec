@@ -1,0 +1,38 @@
+version: "0.1"
+id: "3.5"
+name: HTTP/2 Connection Preface
+ref: "https://tools.ietf.org/html/rfc7540#section-3.5"
+tests:
+- name: Sends client connection preface
+  desc: The server connection preface MUST be the first frame the server sends in the HTTP/2 connection.
+  protocol:
+    type: http2
+    param:
+      handshake: false
+  steps:
+  - action: http2.send_data
+    param:
+      data: ["PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"]
+  - action: http2.send_settings_frame
+    param:
+      ack: false
+      settings:
+      - id: SETTINGS_INITIAL_WINDOW_SIZE
+        value: 1024
+  - action: http2.wait_settings_frame
+    param:
+      ack: true
+
+- name: Sends invalid connection preface
+  desc: The endpoint MUST terminate the TCP connection.
+  protocol:
+    type: http2
+    param:
+      handshake: false
+  steps:
+  - action: http2.send_data
+    param:
+      data: ["INVALID CONNECTION PREFACE\r\n\r\n"]
+  - action: http2.wait_connection_error
+    param:
+      error_code: ["PROTOCOL_ERROR"]

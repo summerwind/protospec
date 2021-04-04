@@ -1,0 +1,92 @@
+version: "0.1"
+id: "6.2"
+name: HEADERS
+ref: "https://tools.ietf.org/html/rfc7540#section-6.2"
+tests:
+- name: Sends a HEADERS frame without the END_HEADERS flag, and a PRIORITY frame
+  desc: The endpoint MUST treat this as a connection error of type PROTOCOL_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 1
+      end_stream: false
+      end_headers: false
+  - action: http2.send_priority_frame
+    param:
+      stream_id: 1
+      stream_dependency: 0
+      exclusive: true
+      weight: 255
+  - action: http2.send_continuation_frame
+    param:
+      stream_id: 1
+      end_headers: true
+      header_fields:
+      - name: protospec
+        value: test
+  - action: http2.wait_connection_error
+    param:
+      error_code: ["PROTOCOL_ERROR"]
+
+- name: Sends a HEADERS frame to another stream while sending a HEADERS frame
+  desc: The endpoint MUST treat this as a connection error of type PROTOCOL_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 1
+      end_stream: false
+      end_headers: false
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 3
+      end_stream: true
+      end_headers: true
+  - action: http2.send_continuation_frame
+    param:
+      stream_id: 1
+      end_headers: true
+      header_fields:
+      - name: protospec
+        value: test
+  - action: http2.wait_connection_error
+    param:
+      error_code: ["PROTOCOL_ERROR"]
+
+- name: Sends a HEADERS frame with 0x0 stream identifier
+  desc: The endpoint MUST respond with a connection error of type PROTOCOL_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 0
+      end_stream: true
+      end_headers: true
+  - action: http2.wait_connection_error
+    param:
+      error_code: ["PROTOCOL_ERROR"]
+
+- name: Sends a HEADERS frame with invalid pad length
+  desc: The endpoint MUST treat this as a connection error of type PROTOCOL_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_data
+    param:
+      # HEADERS Frame (length:16, flags:0x0d, stream_id:1, pad_length:16)
+      data: ["0x000010010d00000001", "0x1084418a089d5c0b8170dc780f038682"]
+  - action: http2.wait_stream_error
+    param:
+      error_code: ["PROTOCOL_ERROR"]

@@ -1,0 +1,36 @@
+version: "0.1"
+id: RFC7540
+name: Hypertext Transfer Protocol Version 2 (HTTP/2)
+ref: "https://tools.ietf.org/html/rfc7540"
+sender_specs:
+- 3_5.yaml
+- 4_1.yaml
+- 4_2.yaml
+- 4_3.yaml
+- 5_1.yaml
+- 5_1_1.yaml
+- 5_1_2.yaml
+- 5_3_1.yaml
+- 5_4_1.yaml
+- 5_5.yaml
+- 6_1.yaml
+- 6_2.yaml
+- 6_3.yaml
+- 6_4.yaml
+- 6_5.yaml
+- 6_5_2.yaml
+- 6_5_3.yaml
+- 6_7.yaml
+- 6_8.yaml
+- 6_9.yaml
+- 6_9_1.yaml
+- 6_9_2.yaml
+- 6_10.yaml
+- 7.yaml
+- 8_1.yaml
+- 8_1_2.yaml
+- 8_1_2_1.yaml
+- 8_1_2_2.yaml
+- 8_1_2_3.yaml
+- 8_1_2_6.yaml
+- 8_2.yaml

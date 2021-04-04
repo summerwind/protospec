@@ -1,0 +1,54 @@
+version: "0.1"
+id: "6.5.3"
+name: Settings Synchronization
+ref: "https://tools.ietf.org/html/rfc7540#section-6.5.3"
+tests:
+- name: Sends multiple values of SETTINGS_INITIAL_WINDOW_SIZE
+  desc: The endpoint MUST process the values in the settings in the order they apper.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.test_data_length
+    param:
+      stream_id: 1
+      minumum_data_length: 1
+  - action: http2.send_settings_frame
+    param:
+      ack: false
+      settings:
+      - id: SETTINGS_INITIAL_WINDOW_SIZE
+        value: 100
+      - id: SETTINGS_INITIAL_WINDOW_SIZE
+        value: 1
+  - action: http2.wait_settings_frame
+    param:
+      ack: true
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 3
+      end_stream: true
+      end_headers: true
+  - action: http2.wait_data_frame
+    param:
+      stream_id: 3
+      length: 1
+
+- name: Sends a SETTINGS frame without ACK flag
+  desc: The endpoint MUST immediately emit a SETTINGS frame with the ACK flag set.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_settings_frame
+    param:
+      ack: false
+      settings:
+      - id: SETTINGS_ENABLE_PUSH
+        value: 0
+  - action: http2.wait_settings_frame
+    param:
+      ack: true
+

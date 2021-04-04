@@ -1,0 +1,96 @@
+version: "0.1"
+id: "8.1.2.1"
+name: Pseudo-Header Fields
+ref: "https://tools.ietf.org/html/rfc7540#section-8.1.2.1"
+tests:
+- name: Sends a HEADERS frame that contains a unknown pseudo-header field
+  desc: The endpoint MUST respond with a stream error of type PROTOCOL_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 1
+      end_stream: true
+      end_headers: true
+      header_fields:
+      - name: :protospec
+        value: test
+  - action: http2.wait_stream_error
+    param:
+      error_code: ["PROTOCOL_ERROR"]
+
+- name: Sends a HEADERS frame that contains the pseudo-header field defined for response
+  desc: The endpoint MUST respond with a stream error of type PROTOCOL_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 1
+      end_stream: true
+      end_headers: true
+      header_fields:
+      - name: :status
+        value: "200"
+  - action: http2.wait_stream_error
+    param:
+      error_code: ["PROTOCOL_ERROR"]
+
+- name: Sends a HEADERS frame that contains a pseudo-header field as trailers
+  desc: The endpoint MUST respond with a stream error of type PROTOCOL_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 1
+      end_stream: false
+      end_headers: true
+      header_fields:
+      - name: :method
+        value: POST
+  - action: http2.send_data_frame
+    param:
+      stream_id: 1
+      end_stream: false
+      data: "protospec"
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 1
+      end_stream: false
+      end_headers: true
+      omit_default_fields: true
+      header_fields:
+      - name: :method
+        value: POST
+  - action: http2.wait_stream_error
+    param:
+      error_code: ["PROTOCOL_ERROR"]
+
+- name: Sends a HEADERS frame that contains a pseudo-header field that appears in a header block after a regular header field
+  desc: The endpoint MUST respond with a stream error of type PROTOCOL_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 1
+      end_stream: true
+      end_headers: true
+      header_fields:
+      - name: protospec
+        value: test
+      - name: :method
+        value: POST
+  - action: http2.wait_stream_error
+    param:
+      error_code: ["PROTOCOL_ERROR"]

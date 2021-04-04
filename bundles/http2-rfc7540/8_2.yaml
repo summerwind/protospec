@@ -1,0 +1,20 @@
+version: "0.1"
+id: "8.2"
+name: Server Push
+ref: "https://tools.ietf.org/html/rfc7540#section-8.2"
+tests:
+- name: Sends a PUSH_PROMISE frame
+  desc: The endpoint MUST treat this as a connection error of type PROTOCOL_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_push_promise_frame
+    param:
+      stream_id: 1
+      promised_stream_id: 3
+      pad_length: 0
+  - action: http2.wait_connection_error
+    param:
+      error_code: ["PROTOCOL_ERROR"]

@@ -1,0 +1,49 @@
+version: "0.1"
+id: "6.5"
+name: SETTINGS
+ref: "https://tools.ietf.org/html/rfc7540#section-6.5"
+tests:
+- name: Sends a SETTINGS frame with ACK flag and payload
+  desc: The endpoint MUST respond with a connection error of type FRAME_SIZE_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_data
+    param:
+      # SETTINGS Frame (length:1, flags:0x01, stream_id:0)
+      data: ["0x000001040100000000", "0x00"]
+  - action: http2.wait_connection_error
+    param:
+      error_code: ["FRAME_SIZE_ERROR"]
+
+- name: Sends a SETTINGS frame with a stream identifier other than 0x0
+  desc: The endpoint MUST respond with a connection error of type PROTOCOL_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_data
+    param:
+      # SETTINGS Frame (length:6, flags:0x00, stream_id:1)
+      data: ["0x000006040000000001", "0x000300000064"]
+  - action: http2.wait_connection_error
+    param:
+      error_code: ["PROTOCOL_ERROR"]
+
+- name: Sends a SETTINGS frame with a length other than a multiple of 6 octets
+  desc: The endpoint MUST respond with a connection error of type FRAME_SIZE_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_data
+    param:
+      # SETTINGS Frame (length:6, flags:0x00, stream_id:1)
+      data: ["0x000003040000000001", "0x000300"]
+  - action: http2.wait_connection_error
+    param:
+      error_code: ["FRAME_SIZE_ERROR"]

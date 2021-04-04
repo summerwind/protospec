@@ -1,0 +1,37 @@
+version: "0.1"
+id: "8.1"
+name: HTTP Request/Response Exchange
+ref: "https://tools.ietf.org/html/rfc7540#section-8.1"
+tests:
+- name: Sends a second HEADERS frame without the END_STREAM flag
+  desc: The endpoint MUST respond with a stream error of type PROTOCOL_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 1
+      end_stream: false
+      end_headers: true
+      header_fields:
+      - name: :method
+        value: POST
+  - action: http2.send_data_frame
+    param:
+      stream_id: 1
+      end_stream: false
+      data: "protospec"
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 1
+      end_stream: false
+      end_headers: true
+      omit_default_fields: true
+      header_fields:
+      - name: protospec
+        value: test
+  - action: http2.wait_stream_error
+    param:
+      error_code: ["PROTOCOL_ERROR"]

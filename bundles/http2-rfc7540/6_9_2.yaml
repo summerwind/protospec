@@ -1,0 +1,105 @@
+version: "0.1"
+id: "6.9.2"
+name: Initial Flow-Control Window Size
+ref: "https://tools.ietf.org/html/rfc7540#section-6.9.2"
+tests:
+- name: Changes SETTINGS_INITIAL_WINDOW_SIZE after sending HEADERS frame
+  desc: The endpoint MUST adjust the size of all stream flow-control windows.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.test_data_length
+    param:
+      stream_id: 1
+      minimum_data_length: 1
+  - action: http2.send_settings_frame
+    param:
+      ack: false
+      settings:
+      - id: SETTINGS_INITIAL_WINDOW_SIZE
+        value: 0
+  - action: http2.wait_settings_frame
+    param:
+      ack: true
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 3
+      end_stream: true
+      end_headers: true
+  - action: http2.wait_headers_frame
+    param:
+      stream_id: 3
+  - action: http2.send_settings_frame
+    param:
+      ack: false
+      settings:
+      - id: SETTINGS_INITIAL_WINDOW_SIZE
+        value: 1
+  - action: http2.wait_settings_frame
+    param:
+      ack: true
+  - action: http2.wait_data_frame
+    param:
+      stream_id: 3
+      data_length: 1
+
+- name: Sends a SETTINGS frame for window size to be negative
+  desc: The endpoint MUST track the negative flow-control window.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.test_data_length
+    param:
+      stream_id: 1
+      minimum_data_length: 5
+  - action: http2.send_settings_frame
+    param:
+      ack: false
+      settings:
+      - id: SETTINGS_INITIAL_WINDOW_SIZE
+        value: 3
+  - action: http2.wait_settings_frame
+    param:
+      ack: true
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 3
+      end_stream: true
+      end_headers: true
+  - action: http2.wait_data_frame
+    param:
+      stream_id: 3
+      data_length: 3
+  - action: http2.send_settings_frame
+    param:
+      ack: false
+      settings:
+      - id: SETTINGS_INITIAL_WINDOW_SIZE
+        value: 2
+  - action: http2.wait_settings_frame
+    param:
+      ack: true
+  - action: http2.send_window_update_frame
+    param:
+      stream_id: 3
+      window_size_increment: 2
+  - action: http2.wait_data_frame
+    param:
+      stream_id: 3
+      data_length: 1
+
+- name: Sends a SETTINGS_INITIAL_WINDOW_SIZE settings with an exceeded maximum window size value
+  desc: The endpoint MUST treat this as a connection error of type FLOW_CONTROL_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_data
+    param:
+      # SETTINGS frame (SETTINGS_INITIAL_WINDOW_SIZE: 2147483648)
+      data: ["0x000006040000000000", "0x000480000000"]

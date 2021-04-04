@@ -1,0 +1,69 @@
+version: "0.1"
+id: "6.1"
+name: DATA
+ref: "https://tools.ietf.org/html/rfc7540#section-6.1"
+tests:
+- name: Sends a DATA frame with 0x0 stream identifier
+  desc: The endpoint MUST respond with a connection error of type PROTOCOL_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_data_frame
+    param:
+      stream_id: 0
+      end_stream: true
+      data: "protospec"
+  - action: http2.wait_connection_error
+    param:
+      error_code: ["PROTOCOL_ERROR"]
+
+- name: 'Sends a DATA frame on the stream that is not in "open" or "half-closed (local)" state'
+  desc: The endpoint MUST respond with a stream error of type STREAM_CLOSED.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 1
+      end_stream: true
+      end_headers: true
+      header_fields:
+        - name: :method
+          value: POST
+  - action: http2.send_data_frame
+    param:
+      stream_id: 1
+      end_stream: true
+      data: "protospec"
+  - action: http2.wait_stream_error
+    param:
+      error_code: ["STREAM_CLOSED"]
+
+- name: Sends a DATA frame with invalid pad length
+  desc: The endpoint MUST treat this as a connection error of type PROTOCOL_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 1
+      end_stream: false
+      end_headers: true
+      header_fields:
+        - name: :method
+          value: POST
+        - name: content-length
+          value: "4"
+  - action: http2.send_data
+    param:
+      # DATA Frame (length:8, flags:0x09, stream_id:1, pad_length:8)
+      data: ["0x000008000900000001", "0x0800000000000000"]
+  - action: http2.wait_connection_error
+    param:
+      error_code: ["PROTOCOL_ERROR"]

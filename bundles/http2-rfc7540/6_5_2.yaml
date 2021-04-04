@@ -1,0 +1,94 @@
+version: "0.1"
+id: "6.5.2"
+name: Defined SETTINGS Parameters
+ref: "https://tools.ietf.org/html/rfc7540#section-6.5.2"
+tests:
+- name: "SETTINGS_ENABLE_PUSH (0x2): Sends the value other than 0 or 1"
+  desc: The endpoint MUST treat this as a connection error of type PROTOCOL_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_settings_frame
+    param:
+      ack: false
+      settings:
+      - id: SETTINGS_ENABLE_PUSH
+        value: 2
+  - action: http2.wait_connection_error
+    param:
+      error_code: ["PROTOCOL_ERROR"]
+
+- name: "SETTINGS_INITIAL_WINDOW_SIZE (0x4): Sends the value above the maximum flow control window size"
+  desc: The endpoint MUST treat this as a connection error of type FLOW_CONTROL_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_settings_frame
+    param:
+      ack: false
+      settings:
+      - id: SETTINGS_INITIAL_WINDOW_SIZE
+        value: 2147483648
+  - action: http2.wait_connection_error
+    param:
+      error_code: ["FLOW_CONTROL_ERROR"]
+
+- name: "SETTINGS_MAX_FRAME_SIZE (0x5): Sends the value below the initial value"
+  desc: The endpoint MUST treat this as a connection error of type PROTOCOL_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_settings_frame
+    param:
+      ack: false
+      settings:
+      - id: SETTINGS_MAX_FRAME_SIZE
+        value: 16383
+  - action: http2.wait_connection_error
+    param:
+      error_code: ["PROTOCOL_ERROR"]
+
+- name: "SETTINGS_MAX_FRAME_SIZE (0x5): Sends the value above the maximum allowed frame size"
+  desc: The endpoint MUST treat this as a connection error of type PROTOCOL_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_settings_frame
+    param:
+      ack: false
+      settings:
+      - id: SETTINGS_MAX_FRAME_SIZE
+        value: 16777216
+  - action: http2.wait_connection_error
+    param:
+      error_code: ["PROTOCOL_ERROR"]
+
+- name: "Sends a SETTINGS frame with unknown identifier"
+  desc: The endpoint MUST ignore that setting.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_settings_frame
+    param:
+      ack: false
+      settings:
+      - id: SETTINGS_UNKNOWN
+        value: 1
+  - action: http2.send_ping_frame
+    param:
+      ack: false
+      data: "protospec"
+  - action: http2.wait_ping_frame
+    param:
+      ack: true
+      data: "protospec"

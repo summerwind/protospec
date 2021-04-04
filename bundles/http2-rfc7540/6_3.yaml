@@ -1,0 +1,41 @@
+version: "0.1"
+id: "6.3"
+name: PRIORITY
+ref: "https://tools.ietf.org/html/rfc7540#section-6.3"
+tests:
+- name: Sends a PRIORITY frame with 0x0 stream identifier
+  desc: The endpoint MUST respond with a connection error of type PROTOCOL_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_priority_frame
+    param:
+      stream_id: 0
+      stream_dependency: 0
+      exclusive: false
+      weight: 255
+  - action: http2.wait_connection_error
+    param:
+      error_code: ["PROTOCOL_ERROR"]
+
+- name: Sends a PRIORITY frame with a length other than 5 octets
+  desc: The endpoint MUST respond with a stream error of type FRAME_SIZE_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 1
+      end_stream: true
+      end_headers: true
+  - action: http2.send_data
+    param:
+      # PRIORITY Frame (length:4, flags:0x00, stream_id:1)
+      data: ["0x000004020000000001", "0x80000001"]
+  - action: http2.wait_stream_error
+    param:
+      error_code: ["FRAME_SIZE_ERROR"]

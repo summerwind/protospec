@@ -1,0 +1,44 @@
+version: "0.1"
+id: "5.1.1"
+name: Stream Identifiers
+ref: "https://tools.ietf.org/html/rfc7540#section-5.1.1"
+tests:
+- name: Sends even-numbered stream identifier
+  desc: The endpoint MUST respond with a connection error of type PROTOCOL_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 2
+      end_stream: true
+      end_headers: true
+  - action: http2.wait_connection_error
+    param:
+      error_code: ["PROTOCOL_ERROR"]
+
+- name: Sends stream identifier that is numerically smaller than previous
+  desc: The endpoint MUST respond with a connection error of type PROTOCOL_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 3
+      end_stream: true
+      end_headers: true
+  - action: http2.wait_headers_frame
+    param:
+      stream_id: 3
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 1
+      end_stream: true
+      end_headers: true
+  - action: http2.wait_connection_error
+    param:
+      error_code: ["PROTOCOL_ERROR"]

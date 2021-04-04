@@ -1,0 +1,49 @@
+version: "0.1"
+id: "6.4"
+name: RST_STREAM
+ref: "https://tools.ietf.org/html/rfc7540#section-6.4"
+tests:
+- name: Sends a RST_STREAM frame with 0x0 stream identifier
+  desc: The endpoint MUST respond with a connection error of type PROTOCOL_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_rst_stream_frame
+    param:
+      stream_id: 0
+      error_code: CANCEL
+  - action: http2.wait_connection_error
+    param:
+      error_code: ["PROTOCOL_ERROR"]
+
+- name: Sends a RST_STREAM frame on a idle stream
+  desc: The endpoint MUST respond with a connection error of type PROTOCOL_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_rst_stream_frame
+    param:
+      stream_id: 1
+      error_code: CANCEL
+  - action: http2.wait_connection_error
+    param:
+      error_code: ["PROTOCOL_ERROR"]
+
+- name: Sends a RST_STREAM frame with a length other than 4 octets
+  desc: The endpoint MUST respond with a connection error of type FRAME_SIZE_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_data
+    param:
+      # RST_FRAME Frame (length:3, flags:0x00, stream_id:1)
+      data: ["0x000003030000000001", "0x000000"]
+  - action: http2.wait_connection_error
+    param:
+      error_code: ["FRAME_SIZE_ERROR"]

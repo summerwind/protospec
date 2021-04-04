@@ -1,0 +1,143 @@
+version: "0.1"
+id: "8.1.2.3"
+name: Request Pseudo-Header Fields
+ref: "https://tools.ietf.org/html/rfc7540#section-8.1.2.3"
+tests:
+- name: Sends a HEADERS frame with empty ":path" pseudo-header field
+  desc: The endpoint MUST respond with a stream error of type PROTOCOL_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 1
+      end_stream: true
+      end_headers: true
+      header_fields:
+      - name: :path
+        value: ""
+  - action: http2.wait_stream_error
+    param:
+      error_code: ["PROTOCOL_ERROR"]
+
+- name: Sends a HEADERS frame that omits ":method" pseudo-header field
+  desc: The endpoint MUST respond with a stream error of type PROTOCOL_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 1
+      end_stream: true
+      end_headers: true
+      header_fields:
+      - name: :method
+        omit: true
+  - action: http2.wait_stream_error
+    param:
+      error_code: ["PROTOCOL_ERROR"]
+
+- name: Sends a HEADERS frame that omits ":scheme" pseudo-header field
+  desc: The endpoint MUST respond with a stream error of type PROTOCOL_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 1
+      end_stream: true
+      end_headers: true
+      header_fields:
+      - name: :scheme
+        omit: true
+  - action: http2.wait_stream_error
+    param:
+      error_code: ["PROTOCOL_ERROR"]
+
+- name: Sends a HEADERS frame that omits ":path" pseudo-header field
+  desc: The endpoint MUST respond with a stream error of type PROTOCOL_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 1
+      end_stream: true
+      end_headers: true
+      header_fields:
+      - name: :path
+        omit: true
+  - action: http2.wait_stream_error
+    param:
+      error_code: ["PROTOCOL_ERROR"]
+
+- name: Sends a HEADERS frame with duplicated ":method" pseudo-header field"
+  desc: The endpoint MUST respond with a stream error of type PROTOCOL_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 1
+      end_stream: true
+      end_headers: true
+      header_fields:
+      - name: :method
+        value: GET
+      - name: :method
+        value: GET
+  - action: http2.wait_stream_error
+    param:
+      error_code: ["PROTOCOL_ERROR"]
+
+- name: Sends a HEADERS frame with duplicated ":scheme" pseudo-header field"
+  desc: The endpoint MUST respond with a stream error of type PROTOCOL_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 1
+      end_stream: true
+      end_headers: true
+      header_fields:
+      - name: :scheme
+        value: http
+      - name: :scheme
+        value: http
+  - action: http2.wait_stream_error
+    param:
+      error_code: ["PROTOCOL_ERROR"]
+
+- name: Sends a HEADERS frame with duplicated ":path" pseudo-header field"
+  desc: The endpoint MUST respond with a stream error of type PROTOCOL_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 1
+      end_stream: true
+      end_headers: true
+      header_fields:
+      - name: :path
+        value: /
+      - name: :path
+        value: /
+  - action: http2.wait_stream_error
+    param:
+      error_code: ["PROTOCOL_ERROR"]

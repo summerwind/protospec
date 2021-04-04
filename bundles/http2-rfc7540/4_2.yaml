@@ -1,0 +1,71 @@
+version: "0.1"
+id: "4.2"
+name: Frame Size
+ref: "https://tools.ietf.org/html/rfc7540#section-4.2"
+tests:
+- name: Sends a DATA frame with 2^14 octets in length
+  desc: The endpoint MUST be capable of receiving and minimally processing frames up to 2^14 octets in length.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 1
+      end_stream: false
+      end_headers: true
+      header_fields:
+        - name: :method
+          value: POST
+  - action: http2.send_data_frame
+    param:
+      stream_id: 1
+      end_stream: true
+      data_length: 16384
+  - action: http2.wait_headers_frame
+    param:
+      stream_id: 1
+
+- name: Sends a large size DATA frame that exceeds the SETTINGS_MAX_FRAME_SIZE
+  desc: The endpoint MUST send an error code of FRAME_SIZE_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 1
+      end_stream: false
+      end_headers: true
+      header_fields:
+        - name: :method
+          value: POST
+  - action: http2.send_data_frame
+    param:
+      stream_id: 1
+      end_stream: true
+      pad_length: 1
+      fill_max_frame_size: true
+  - action: http2.wait_stream_error
+    param:
+      error_code: [FRAME_SIZE_ERROR]
+
+- name: Sends a large size HEADERS frame that exceeds the SETTINGS_MAX_FRAME_SIZEE
+  desc: The endpoint MUST respond with a connection error of type FRAME_SIZE_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 1
+      end_stream: true
+      end_headers: true
+      pad_length: 1
+      fill_max_frame_size: true
+  - action: http2.wait_connection_error
+    param:
+      error_code: [FRAME_SIZE_ERROR]

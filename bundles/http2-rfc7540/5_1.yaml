@@ -1,0 +1,320 @@
+version: "0.1"
+id: "5.1"
+name: Stream States
+ref: "https://tools.ietf.org/html/rfc7540#section-5.1"
+tests:
+- name: "idle: Sends a DATA framer"
+  desc: The endpoint MUST treat this as a connection error of type PROTOCOL_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_data_frame
+    param:
+      stream_id: 1
+      end_stream: true
+      data: "protospec"
+  - action: http2.wait_connection_error
+    param:
+      error_code: ["PROTOCOL_ERROR"]
+
+- name: "idle: Sends a RST_STREAM frame"
+  desc: The endpoint MUST treat this as a connection error of type PROTOCOL_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_rst_stream_frame
+    param:
+      stream_id: 1
+      error_code: CANCEL
+  - action: http2.wait_connection_error
+    param:
+      error_code: ["PROTOCOL_ERROR"]
+
+- name: "idle: Sends a WINDOW_UPDATE frame"
+  desc: The endpoint MUST treat this as a connection error of type PROTOCOL_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_window_update_frame
+    param:
+      stream_id: 1
+      window_size_increment: 100
+  - action: http2.wait_connection_error
+    param:
+      error_code: ["PROTOCOL_ERROR"]
+
+- name: "idle: Sends a CONTINUATION frame"
+  desc: The endpoint MUST treat this as a connection error of type PROTOCOL_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_continuation_frame
+    param:
+      stream_id: 1
+      end_headers: true
+      header_fields:
+        - name: protospec
+          value: test
+  - action: http2.wait_connection_error
+    param:
+      error_code: ["PROTOCOL_ERROR"]
+
+- name: "half closed (remote): Sends a DATA frame"
+  desc: The endpoint MUST respond with a stream error of type STREAM_CLOSED.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 1
+      end_stream: true
+      end_headers: true
+      header_fields:
+        - name: protospec
+          value: test
+  - action: http2.send_data_frame
+    param:
+      stream_id: 1
+      end_stream: true
+      data: "protospec"
+  - action: http2.wait_connection_error
+    param:
+      error_code: ["STREAM_CLOSED"]
+
+- name: "half closed (remote): Sends a HEADERS frame"
+  desc: The endpoint MUST respond with a stream error of type STREAM_CLOSED.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 1
+      end_stream: true
+      end_headers: true
+      header_fields:
+        - name: protospec
+          value: test
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 1
+      end_stream: true
+      end_headers: true
+      header_fields:
+        - name: protospec
+          value: test
+  - action: http2.wait_connection_error
+    param:
+      error_code: ["STREAM_CLOSED"]
+
+- name: "half closed (remote): Sends a CONTINUATION frame"
+  desc: The endpoint MUST respond with a stream error of type STREAM_CLOSED.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 1
+      end_stream: true
+      end_headers: true
+      header_fields:
+        - name: protospec
+          value: test
+  - action: http2.send_continuation_frame
+    param:
+      stream_id: 1
+      end_headers: true
+      header_fields:
+        - name: protospec
+          value: test
+  - action: http2.wait_connection_error
+    param:
+      error_code: ["STREAM_CLOSED", "PROTOCOL_ERROR"]
+
+- name: "closed: Sends a DATA frame after sending RST_STREAM frame"
+  desc: The endpoint MUST treat this as a stream error of type STREAM_CLOSED.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 1
+      end_stream: false
+      end_headers: true
+      header_fields:
+        - name: protospec
+          value: test
+  - action: http2.send_rst_stream_frame
+    param:
+      stream_id: 1
+      error_code: "CANCEL"
+  - action: http2.send_data_frame
+    param:
+      stream_id: 1
+      end_stream: true
+      data: "protospec"
+  - action: http2.wait_stream_error
+    param:
+      error_code: ["STREAM_CLOSED"]
+
+- name: "closed: Sends a HEADERS frame after sending RST_STREAM frame"
+  desc: The endpoint MUST treat this as a stream error of type STREAM_CLOSED.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 1
+      end_stream: false
+      end_headers: true
+      header_fields:
+        - name: protospec
+          value: test
+  - action: http2.send_rst_stream_frame
+    param:
+      stream_id: 1
+      error_code: "CANCEL"
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 1
+      end_stream: true
+      end_headers: true
+      header_fields:
+        - name: protospec
+          value: test
+  - action: http2.wait_stream_error
+    param:
+      error_code: ["STREAM_CLOSED"]
+
+- name: "closed: Sends a CONTINUATION frame after sending RST_STREAM frame"
+  desc: The endpoint MUST treat this as a stream error of type STREAM_CLOSED.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 1
+      end_stream: false
+      end_headers: true
+      header_fields:
+        - name: protospec
+          value: test
+  - action: http2.send_rst_stream_frame
+    param:
+      stream_id: 1
+      error_code: "CANCEL"
+  - action: http2.send_continuation_frame
+    param:
+      stream_id: 1
+      end_headers: true
+      header_fields:
+        - name: protospec
+          value: test
+  - action: http2.wait_stream_error
+    param:
+      error_code: ["STREAM_CLOSED", "PROTOCOL_ERROR"]
+
+- name: "closed: Sends a DATA frame"
+  desc: The endpoint MUST treat this as a connection error of type STREAM_CLOSED.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 1
+      end_stream: true
+      end_headers: true
+      header_fields:
+        - name: protospec
+          value: test
+  - action: http2.wait_stream_close
+    param:
+      stream_id: 1
+  - action: http2.send_data_frame
+    param:
+      stream_id: 1
+      end_stream: true
+      data: "protospec"
+  - action: http2.wait_connection_error
+    param:
+      error_code: ["STREAM_CLOSED"]
+
+- name: "closed: Sends a HEADERS frame"
+  desc: The endpoint MUST treat this as a connection error of type STREAM_CLOSED.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 1
+      end_stream: true
+      end_headers: true
+      header_fields:
+        - name: protospec
+          value: test
+  - action: http2.wait_stream_close
+    param:
+      stream_id: 1
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 1
+      end_stream: true
+      end_headers: true
+      header_fields:
+        - name: protospec
+          value: test
+  - action: http2.wait_connection_error
+    param:
+      error_code: ["STREAM_CLOSED"]
+
+- name: "closed: Sends a CONTINUATION frame"
+  desc: The endpoint MUST treat this as a connection error of type STREAM_CLOSED.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 1
+      end_stream: true
+      end_headers: true
+      header_fields:
+        - name: protospec
+          value: test
+  - action: http2.wait_stream_close
+    param:
+      stream_id: 1
+  - action: http2.send_continuation_frame
+    param:
+      stream_id: 1
+      end_headers: true
+      header_fields:
+        - name: protospec
+          value: test
+  - action: http2.wait_connection_error
+    param:
+      error_code: ["STREAM_CLOSED", "PROTOCOL_ERROR"]

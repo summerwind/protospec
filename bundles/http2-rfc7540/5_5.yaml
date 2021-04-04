@@ -1,0 +1,43 @@
+version: "0.1"
+id: "5.5"
+name: Extending HTTP/2
+ref: "https://tools.ietf.org/html/rfc7540#section-5.5"
+tests:
+- name: Sends an unknown extension frame
+  desc: The endpoint MUST ignore unknown or unsupported values in all extensible protocol elements.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_data
+    param:
+      # UNKNOWN Frame (length:8, type:255, flags:0x00, R:0, stream_id:0)
+      data: ["0x000008160000000000", "0x0000000000000000"]
+  - action: http2.send_ping_frame
+    param:
+      ack: false
+      data: "protospec"
+  - action: http2.wait_ping_frame
+    param:
+      ack: true
+
+- name: Sends an unknown extension frame in the middle of a header block
+  desc: The endpoint MUST treat as a connection error of type PROTOCOL_ERROR.
+  protocol:
+    type: http2
+    param:
+      handshake: true
+  steps:
+  - action: http2.send_headers_frame
+    param:
+      stream_id: 1
+      end_stream: true
+      end_headers: false
+  - action: http2.send_data
+    param:
+      # UNKNOWN Frame (length:8, type:255, flags:0x00, R:0, stream_id:1)
+      data: ["0x000008160000000001", "0x0000000000000000"]
+  - action: http2.wait_connection_error
+    param:
+      error_code: ["PROTOCOL_ERROR"]

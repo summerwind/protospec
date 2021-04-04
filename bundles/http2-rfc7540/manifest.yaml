@@ -1,5 +1,5 @@
 version: "0.1"
-id: RFC7540
+id: rfc7540
 name: Hypertext Transfer Protocol Version 2 (HTTP/2)
 ref: "https://tools.ietf.org/html/rfc7540"
 sender_specs:

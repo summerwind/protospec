@@ -1,0 +1,5 @@
+version: "0.1"
+id: debug
+desc: "Examples of debug actions"
+sender_specs:
+- debug.yaml

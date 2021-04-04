@@ -48,7 +48,7 @@ tests:
   steps:
   - action: http2.send_data
     param:
-      # PING frame (length:8, flags:0x06, stream_id:1)
+      # PING frame (length:8, flags:0x00, stream_id:1)
       data: ["0x000008060000000001", "0x0000000000000000"]
   - action: http2.wait_connection_error
     param:
@@ -63,7 +63,7 @@ tests:
   steps:
   - action: http2.send_data
     param:
-      # PING frame (length:6, flags:0x06, stream_id:0)
+      # PING frame (length:6, flags:0x00, stream_id:0)
       data: ["0x000006060000000000", "0x000000000000"]
   - action: http2.wait_connection_error
     param:

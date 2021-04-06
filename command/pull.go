@@ -13,7 +13,7 @@ import (
 )
 
 func NewPullCommand() *cobra.Command {
-	var output string
+	var spec string
 
 	var cmd = cobra.Command{
 		Use:   "pull <bundle>",
@@ -21,24 +21,24 @@ func NewPullCommand() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			bundleName := args[0]
-			return pull(bundleName, output)
+			return pull(bundleName, spec)
 		},
 	}
 
 	pflag := cmd.Flags()
-	pflag.StringVarP(&output, "output", "o", "spec", "Path to save the spec bundle to")
+	pflag.StringVarP(&spec, "spec", "s", "spec", "Path to save the spec bundle to")
 
 	return &cmd
 }
 
-func pull(bundleName, outputPath string) error {
+func pull(bundleName, bundlePath string) error {
 	if err := validateBundleName(bundleName); err != nil {
 		return err
 	}
 
 	bundleName = normalizeBundleName(bundleName)
 
-	store := content.NewFileStore(outputPath)
+	store := content.NewFileStore(bundlePath)
 	defer store.Close()
 
 	ctx := context.Background()

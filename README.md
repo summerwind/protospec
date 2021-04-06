@@ -1,6 +1,6 @@
 # protospec
 
-protospec is an extensible conformance testing tool for internet protocols. The tests are called '*spec*' and can be written declaratively in YAML format and shared as OCI Artifacts.
+*protospec* is an extensible conformance testing tool for internet protocols. The tests are called '*spec*' and can be written declaratively in YAML format and shared as OCI Artifacts.
 
 *This project is currently in the 'pathfinder' phase. Please be aware that incompatible changes may be made without notice.*
 
@@ -16,7 +16,7 @@ $ docker pull ghcr.io/summerwind/protospec:latest
 
 ## Usage
 
-To run protospec, you first need to download test files called '*spec bundle*. You can then run the tests with the sppec bundle.
+To run protospec, you first need to download test files called '*spec bundle*'. You can then run the tests with the spec bundle.
 
 Here is an example of how to download and run the tests of [RFC7540](https://tools.ietf.org/html/rfc7540).
 

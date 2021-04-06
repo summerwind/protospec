@@ -13,13 +13,14 @@ func NewRunCommand() *cobra.Command {
 		Short: "Run a spec test against the target",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			c.Addr = args[0]
+			c.SpecPath = args[0]
 			return run(c)
 		},
 	}
 
 	pflag := cmd.Flags()
-	pflag.StringVarP(&c.SpecPath, "spec", "s", "spec", "Path of spec tests directory to run")
+	pflag.StringVarP(&c.Host, "host", "h", "127.0.0.1", "Target host")
+	pflag.Uint32VarP(&c.Port, "port", "p", 0, "Target port")
 	pflag.StringSliceVarP(&c.Tests, "test", "t", []string{}, "Test IDs to run")
 	pflag.BoolVarP(&c.Insecure, "insecure", "k", false, "Don't verify server's certificate")
 	pflag.BoolVar(&c.Strict, "strict", false, "Run all test cases including optional test cases")

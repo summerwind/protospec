@@ -25,6 +25,7 @@ func main() {
 		Version: fmt.Sprintf("%s (%s)", _version, _commit),
 	}
 
+	rootCmd.PersistentFlags().Bool("help", false, "Display this help and exit")
 	rootCmd.SetVersionTemplate("{{.Version}}\n")
 	rootCmd.SilenceUsage = true
 

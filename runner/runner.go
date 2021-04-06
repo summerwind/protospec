@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -16,8 +17,9 @@ import (
 )
 
 type Config struct {
-	Addr     string
 	SpecPath string
+	Host     string
+	Port     uint32
 	Tests    []string
 	Insecure bool
 	Strict   bool
@@ -27,7 +29,10 @@ type Config struct {
 
 func (c *Config) Validate() error {
 	if _, err := os.Stat(c.SpecPath); os.IsNotExist(err) {
-		return fmt.Errorf("spec directory does not exist: %s", c.SpecPath)
+		return fmt.Errorf("spec bundle directory does not exist: %s", c.SpecPath)
+	}
+	if c.Port == 0 {
+		return errors.New("target port must be specified")
 	}
 
 	return nil
@@ -169,7 +174,8 @@ func (r *Runner) NewConn(test spec.Test) (protocol.Conn, error) {
 		return nil, fmt.Errorf("invalid transport: '%s'", test.Transport)
 	}
 
-	transport, err = net.Dial(test.Transport, r.config.Addr)
+	addr := fmt.Sprintf("%s:%d", r.config.Host, r.config.Port)
+	transport, err = net.Dial(test.Transport, addr)
 	if err != nil {
 		return nil, fmt.Errorf("transport error: %w", err)
 	}

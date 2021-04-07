@@ -1,3 +1,5 @@
+name: build
+
 on:
   push:
     branches:
@@ -17,8 +19,7 @@ jobs:
 
     - name: test
       run: |
-        go vet ./...
-        go test -v ./...
+        make test
 
   build:
     needs: test
@@ -38,9 +39,5 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: build and push
-      uses: docker/build-push-action@v2
-      with:
-        context: .
-        push: true
-        tags: |
-          ghcr.io/${{ github.actor }}/protospec:latest
+      run: |
+        make latest-image

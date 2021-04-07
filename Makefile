@@ -25,6 +25,9 @@ release:
 	tar -czf release/protospec_linux_arm64.tar.gz protospec
 	rm -rf protospec
 
+github-release: release
+	ghr $(VERSION) release/
+
 latest-image:
 	docker buildx build \
 		--platform linux/amd64,linux/arm64 \

@@ -27,16 +27,17 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: set version
+      run: |
+        echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+
     - name: release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        VERSION: ${{ github.ref }}
       run: |
         go install github.com/tcnksm/ghr@v0.13.0
         make github-release
 
     - name: release image
-      env:
-        VERSION: ${{ github.ref }}
       run: |
         make release-image

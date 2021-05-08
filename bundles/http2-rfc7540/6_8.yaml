@@ -12,6 +12,7 @@ tests:
   steps:
   - action: http2.send_data
     param:
+      # GOAWAY frame (length:8, flags:0x00, stream_id:1)
       data: ["0x000008070000000001", "0x0000000000000000"]
   - action: http2.wait_connection_error
     param:

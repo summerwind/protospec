@@ -50,6 +50,7 @@ tests:
   steps:
   - action: http2.send_data
     param:
+      # WINDOW_UPDATE frame (length:3, flags:0x00, stream_id:0)
       data: ["0x000003080000000000", "0x000001"]
   - action: http2.wait_connection_error
     param:

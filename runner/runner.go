@@ -48,7 +48,7 @@ func NewRunner(c Config) *Runner {
 	}
 }
 
-func (r *Runner) Run() error {
+func (r *Runner) Run() (bool, error) {
 	var (
 		err          error
 		testCount    int
@@ -66,7 +66,7 @@ func (r *Runner) Run() error {
 	for _, test := range r.config.Tests {
 		parts := strings.Split(test, "/")
 		if len(parts) < 2 {
-			return fmt.Errorf("invalid test ID: %s", test)
+			return false, fmt.Errorf("invalid test ID: %s", test)
 		}
 
 		targetSpecs[strings.Join(parts[:len(parts)-1], "/")] = true
@@ -75,7 +75,7 @@ func (r *Runner) Run() error {
 
 	bundle, err := spec.Load(r.config.SpecPath)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	for _, spec := range bundle.Specs {
@@ -102,7 +102,7 @@ func (r *Runner) Run() error {
 
 			conn, err := r.NewConn(test)
 			if err != nil {
-				return err
+				return false, err
 			}
 
 			param := test.Protocol.Param
@@ -111,7 +111,7 @@ func (r *Runner) Run() error {
 			}
 
 			if err := conn.Init(param); err != nil {
-				return err
+				return false, err
 			}
 
 			for _, step := range test.Steps {
@@ -136,7 +136,7 @@ func (r *Runner) Run() error {
 					skippedCount += 1
 				default:
 					log.Error(id, test.Name)
-					return err
+					return false, err
 				}
 			} else {
 				log.Pass(id, test.Name)
@@ -144,7 +144,7 @@ func (r *Runner) Run() error {
 			}
 
 			if err := conn.Close(); err != nil {
-				return err
+				return false, err
 			}
 
 			testCount += 1
@@ -155,7 +155,7 @@ func (r *Runner) Run() error {
 
 	log.Summary(testCount, passedCount, skippedCount, failedCount)
 
-	return nil
+	return (failedCount == 0), nil
 }
 
 func (r *Runner) NewConn(test spec.Test) (protocol.Conn, error) {

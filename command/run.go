@@ -1,6 +1,8 @@
 package command
 
 import (
+	"os"
+
 	"github.com/spf13/cobra"
 	"github.com/summerwind/protospec/runner"
 )
@@ -36,5 +38,13 @@ func run(c runner.Config) error {
 	}
 
 	r := runner.NewRunner(c)
-	return r.Run()
+	ok, err := r.Run()
+	if err != nil {
+		return err
+	}
+	if !ok {
+		os.Exit(1)
+	}
+
+	return nil
 }

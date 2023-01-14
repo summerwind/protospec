@@ -1,0 +1,9 @@
+name: spec test
+ref: "https://github.com/summerwind/protospec"
+endpoint:
+  type: client
+  protocol: tcp
+tests:
+- name: Always pass
+  steps:
+  - action: debug.pass
